@@ -122,6 +122,7 @@ def main():
     )
 
     parser.add_argument(
+        "-i",
         "--input-dir",
         type=Path,
         required=True,
@@ -129,6 +130,7 @@ def main():
     )
 
     parser.add_argument(
+        "-o",
         "--output-dir",
         type=Path,
         required=True,
@@ -136,6 +138,7 @@ def main():
     )
 
     parser.add_argument(
+        "-s",
         "--speaker-reference",
         type=Path,
         required=True,
