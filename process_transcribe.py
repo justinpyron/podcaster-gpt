@@ -63,7 +63,6 @@ def process_mp3_files(
     input_dir: Path,
     output_dir: Path,
     speaker_reference_path: Path,
-    api_key: str,
 ) -> None:
     """
     Process all MP3 files in the input directory and save transcripts.
@@ -72,8 +71,12 @@ def process_mp3_files(
         input_dir: Directory containing MP3 files to process
         output_dir: Directory where JSON transcripts will be saved
         speaker_reference_path: Path to the known speaker reference audio
-        api_key: OpenAI API key
     """
+    # Get API key from environment variable
+    api_key = os.getenv("OPENAI_API_KEY_DEFAULT")
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY_DEFAULT environment variable is not set")
+
     # Initialize OpenAI client
     client = OpenAI(api_key=api_key)
 
@@ -139,13 +142,6 @@ def main():
         help="Path to the known speaker reference audio file (must be 2-10 seconds long)",
     )
 
-    parser.add_argument(
-        "--api-key",
-        type=str,
-        default=None,
-        help="OpenAI API key (defaults to OPENAI_API_KEY_DEFAULT environment variable)",
-    )
-
     args = parser.parse_args()
 
     # Validate input directory exists
@@ -159,20 +155,11 @@ def main():
     if not args.speaker_reference.exists():
         parser.error(f"Speaker reference file does not exist: {args.speaker_reference}")
 
-    # Get API key from argument or environment variable
-    api_key = args.api_key or os.getenv("OPENAI_API_KEY_DEFAULT")
-    if not api_key:
-        parser.error(
-            "API key must be provided via --api-key argument or "
-            "OPENAI_API_KEY_DEFAULT environment variable"
-        )
-
     # Process the files
     process_mp3_files(
         input_dir=args.input_dir,
         output_dir=args.output_dir,
         speaker_reference_path=args.speaker_reference,
-        api_key=api_key,
     )
 
     print("\n✓ All files processed successfully")
