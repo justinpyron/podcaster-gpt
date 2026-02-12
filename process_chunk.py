@@ -15,7 +15,6 @@ from pydub import AudioSegment
 def split_audio_to_chunks(
     input_path: Path,
     output_dir: Path,
-    folder_name: str,
     chunk_length_ms: int = 5 * 60 * 1000,
     overlap_ms: int = 20 * 1000,
 ) -> list[Path]:
@@ -25,7 +24,6 @@ def split_audio_to_chunks(
     Args:
         input_path: Path to the input mp3 file.
         output_dir: Directory where chunked files will be saved.
-        folder_name: Name of the input folder (for naming chunks).
         chunk_length_ms: Length of each chunk in milliseconds.
         overlap_ms: Overlap between consecutive chunks in milliseconds.
 
@@ -50,8 +48,8 @@ def split_audio_to_chunks(
 
     chunk_paths = []
     for i, chunk in enumerate(chunks):
-        # Format: {folder_name}__ep_{file_name}__chunk_{chunk_idx}
-        chunk_filename = f"{folder_name}__ep_{input_file_stem}__chunk_{i:02d}.mp3"
+        # Format: {input_path}__{chunk_idx}
+        chunk_filename = f"{input_file_stem}__{i:02d}.mp3"
         chunk_path = output_dir / chunk_filename
 
         print(f"  Exporting chunk {i+1:02d} of {len(chunks)}: {chunk_filename}")
@@ -76,9 +74,6 @@ def process_folder(
         chunk_length_ms: Length of each chunk in milliseconds.
         overlap_ms: Overlap between consecutive chunks in milliseconds.
     """
-    # Get the input folder name for naming chunks
-    folder_name = input_folder.name
-
     # Find all MP3 files in the input folder
     mp3_files = sorted(input_folder.glob("*.mp3"))
 
@@ -96,7 +91,6 @@ def process_folder(
         chunk_paths = split_audio_to_chunks(
             input_path=mp3_file,
             output_dir=output_folder,
-            folder_name=folder_name,
             chunk_length_ms=chunk_length_ms,
             overlap_ms=overlap_ms,
         )
