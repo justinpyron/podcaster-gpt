@@ -24,12 +24,12 @@ def transcribe_audio(
     speaker_reference_path: Path,
 ) -> List[Dict[str, str]]:
     """
-    Transcribe an audio file using OpenAI API with speaker diarization.
+    Transcribe an MP3 audio file using OpenAI API with speaker diarization.
 
     Args:
         client: OpenAI client instance
-        audio_path: Path to the audio file to transcribe
-        speaker_reference_path: Path to the known speaker reference audio
+        audio_path: Path to the MP3 audio file to transcribe
+        speaker_reference_path: Path to the known speaker reference MP3 audio file
 
     Returns:
         List of message dictionaries with 'speaker' and 'text' keys
