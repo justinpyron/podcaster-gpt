@@ -50,8 +50,8 @@ def split_audio_to_chunks(
 
     chunk_paths = []
     for i, chunk in enumerate(chunks):
-        # Format: pod_{folder_name}__pod_{file_name}__chunk_{chunk_idx}
-        chunk_filename = f"pod_{folder_name}__pod_{input_file_stem}__chunk_{i:02d}.mp3"
+        # Format: {folder_name}__ep_{file_name}__chunk_{chunk_idx}
+        chunk_filename = f"{folder_name}__ep_{input_file_stem}__chunk_{i:02d}.mp3"
         chunk_path = output_dir / chunk_filename
 
         print(f"  Exporting chunk {i+1:02d} of {len(chunks)}: {chunk_filename}")
