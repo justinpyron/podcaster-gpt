@@ -8,7 +8,6 @@ and saves them to an output folder with a structured naming convention.
 
 import argparse
 from pathlib import Path
-from typing import List
 
 from pydub import AudioSegment
 
@@ -19,7 +18,7 @@ def split_audio_to_chunks(
     folder_name: str,
     chunk_length_ms: int = 5 * 60 * 1000,
     overlap_ms: int = 20 * 1000,
-) -> List[Path]:
+) -> list[Path]:
     """
     Splits an mp3 audio file into overlapping chunks and saves them as mp3 files.
 
