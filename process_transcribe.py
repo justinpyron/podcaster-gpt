@@ -6,8 +6,9 @@ import argparse
 import base64
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from openai import OpenAI
 
@@ -59,10 +60,48 @@ def transcribe_audio(
     return messages
 
 
+def process_single_file(
+    mp3_file: Path,
+    output_dir: Path,
+    speaker_reference_path: Path,
+    client: OpenAI,
+) -> tuple[Path, Optional[int], Optional[str]]:
+    """
+    Process a single MP3 file and save its transcript.
+
+    Args:
+        mp3_file: Path to the MP3 file to process
+        output_dir: Directory where JSON transcript will be saved
+        speaker_reference_path: Path to the known speaker reference audio
+        client: OpenAI client instance
+
+    Returns:
+        Tuple of (mp3_file, segment_count, error_message)
+        segment_count is None if error occurred, error_message is None if successful
+    """
+    try:
+        # Transcribe the audio
+        messages = transcribe_audio(client, mp3_file, speaker_reference_path)
+
+        # Create output filename (replace .mp3 with .json)
+        output_filename = mp3_file.stem + ".json"
+        output_path = output_dir / output_filename
+
+        # Save the processed transcript as JSON
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(messages, f, indent=4, ensure_ascii=False)
+
+        return (mp3_file, len(messages), None)
+
+    except Exception as e:
+        return (mp3_file, None, str(e))
+
+
 def process_mp3_files(
     input_dir: Path,
     output_dir: Path,
     speaker_reference_path: Path,
+    max_workers: int,
 ) -> None:
     """
     Process all MP3 files in the input directory and save transcripts.
@@ -71,6 +110,7 @@ def process_mp3_files(
         input_dir: Directory containing MP3 files to process
         output_dir: Directory where JSON transcripts will be saved
         speaker_reference_path: Path to the known speaker reference audio
+        max_workers: Maximum number of parallel workers
     """
     # Get API key from environment variable
     api_key = os.getenv("OPENAI_API_KEY_DEFAULT")
@@ -91,28 +131,48 @@ def process_mp3_files(
         return
 
     print(f"Found {len(mp3_files)} MP3 file(s) to process")
+    print(f"Using {max_workers} parallel workers\n")
 
-    # Process each MP3 file
-    for mp3_file in mp3_files:
-        print(f"\nProcessing: {mp3_file.name}")
+    # Process files in parallel using ThreadPoolExecutor
+    completed = 0
+    successful = 0
+    failed = 0
 
-        try:
-            # Transcribe the audio
-            messages = transcribe_audio(client, mp3_file, speaker_reference_path)
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all tasks
+        future_to_file = {
+            executor.submit(
+                process_single_file,
+                mp3_file,
+                output_dir,
+                speaker_reference_path,
+                client,
+            ): mp3_file
+            for mp3_file in mp3_files
+        }
 
-            # Create output filename (replace .mp3 with .json)
-            output_filename = mp3_file.stem + ".json"
-            output_path = output_dir / output_filename
+        # Process completed tasks as they finish
+        for future in as_completed(future_to_file):
+            completed += 1
+            mp3_file, segment_count, error = future.result()
 
-            # Save the processed transcript as JSON
-            with open(output_path, "w", encoding="utf-8") as f:
-                json.dump(messages, f, indent=4, ensure_ascii=False)
+            if error is None:
+                successful += 1
+                print(
+                    f"[{completed}/{len(mp3_files)}] ✓ {mp3_file.name} "
+                    f"({segment_count} segments)"
+                )
+            else:
+                failed += 1
+                print(f"[{completed}/{len(mp3_files)}] ❌ {mp3_file.name}: {error}")
 
-            print(f"  ✓ Saved transcript to: {output_path}")
-            print(f"  ✓ Found {len(messages)} segments")
-
-        except Exception as e:
-            print(f"  ❌ Error processing {mp3_file.name}: {e}")
+    # Print summary
+    print(f"\n{'='*60}")
+    print(f"Processing complete!")
+    print(f"  Total: {len(mp3_files)}")
+    print(f"  Successful: {successful}")
+    print(f"  Failed: {failed}")
+    print(f"{'='*60}")
 
 
 def main():
@@ -145,6 +205,14 @@ def main():
         help="Path to the known speaker reference audio file (must be 2-10 seconds long)",
     )
 
+    parser.add_argument(
+        "-w",
+        "--workers",
+        type=int,
+        default=50,
+        help="Maximum number of parallel workers (default: 50)",
+    )
+
     args = parser.parse_args()
 
     # Validate input directory exists
@@ -163,9 +231,8 @@ def main():
         input_dir=args.input_dir,
         output_dir=args.output_dir,
         speaker_reference_path=args.speaker_reference,
+        max_workers=args.workers,
     )
-
-    print("\n✓ All files processed successfully")
 
 
 if __name__ == "__main__":
