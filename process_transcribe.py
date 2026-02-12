@@ -103,13 +103,13 @@ def process_mp3_files(
 
             # Save the processed transcript as JSON
             with open(output_path, "w", encoding="utf-8") as f:
-                json.dump(messages, f, indent=2, ensure_ascii=False)
+                json.dump(messages, f, indent=4, ensure_ascii=False)
 
             print(f"  ✓ Saved transcript to: {output_path}")
             print(f"  ✓ Found {len(messages)} segments")
 
         except Exception as e:
-            print(f"  ✗ Error processing {mp3_file.name}: {e}")
+            print(f"  ❌ Error processing {mp3_file.name}: {e}")
 
 
 def main():
@@ -136,7 +136,7 @@ def main():
         "--speaker-reference",
         type=Path,
         required=True,
-        help="Path to the known speaker reference audio file",
+        help="Path to the known speaker reference audio file (must be 2-10 seconds long)",
     )
 
     parser.add_argument(
