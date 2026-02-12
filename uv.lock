@@ -1206,9 +1206,7 @@ name = "podcaster-gpt"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "openai" },
-    { name = "pre-commit" },
-    { name = "pydub" },
+    { name = "torch" },
 ]
 
 [package.dev-dependencies]
@@ -1216,26 +1214,26 @@ dev = [
     { name = "ipykernel" },
     { name = "matplotlib" },
     { name = "numpy" },
+    { name = "openai" },
     { name = "pandas" },
+    { name = "pre-commit" },
+    { name = "pydub" },
     { name = "seaborn" },
-    { name = "torch" },
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "openai", specifier = ">=2.20.0" },
-    { name = "pre-commit", specifier = ">=4.5.1" },
-    { name = "pydub", specifier = ">=0.25.1" },
-]
+requires-dist = [{ name = "torch", specifier = ">=2.10.0" }]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "ipykernel", specifier = ">=7.2.0" },
     { name = "matplotlib", specifier = ">=3.10.8" },
     { name = "numpy", specifier = ">=2.4.2" },
+    { name = "openai", specifier = ">=2.20.0" },
     { name = "pandas", specifier = ">=3.0.0" },
+    { name = "pre-commit", specifier = ">=4.5.1" },
+    { name = "pydub", specifier = ">=0.25.1" },
     { name = "seaborn", specifier = ">=0.13.2" },
-    { name = "torch", specifier = ">=2.10.0" },
 ]
 
 [[package]]
