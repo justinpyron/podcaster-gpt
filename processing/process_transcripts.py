@@ -1,6 +1,14 @@
+#!/usr/bin/env python3
 """
-Script to process transcripts and generate formatted messages for training.
+Script to process raw transcripts and generate formatted messages for training.
+
+This is step 2 in the pipeline:
+1. transcribe.py: Convert MP3 files to raw transcript JSONs
+2. process_transcripts.py: Convert raw transcript JSONs to processed transcript JSONs
 """
+import argparse
+import json
+from pathlib import Path
 
 
 def drop_first_and_last(messages: list[dict]) -> list[dict]:
@@ -122,3 +130,90 @@ def process_transcript(messages: list[dict]) -> list[dict]:
     messages = clean_messages(messages)
     messages = transform_into_chatbot_format(messages)
     return messages
+
+
+def process_all_files(input_dir: Path, output_dir: Path) -> None:
+    """
+    Process all JSON transcript files in the input directory and save processed versions.
+
+    Args:
+        input_dir: Directory containing raw transcript JSON files
+        output_dir: Directory where processed transcript JSON files will be saved
+    """
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    json_files = sorted(input_dir.glob("*.json"))
+
+    if not json_files:
+        print(f"No JSON files found in {input_dir}")
+        return
+
+    print(f"Found {len(json_files)} JSON file(s) to process\n")
+
+    successful = 0
+    failed = 0
+
+    for json_file in json_files:
+        try:
+            with open(json_file, "r", encoding="utf-8") as f:
+                messages = json.load(f)
+
+            processed_messages = process_transcript(messages)
+
+            output_path = output_dir / json_file.name
+            with open(output_path, "w", encoding="utf-8") as f:
+                json.dump(processed_messages, f, indent=4, ensure_ascii=False)
+
+            successful += 1
+            print(f"✓ {json_file.name} ({len(processed_messages)} messages)")
+
+        except Exception as e:
+            failed += 1
+            print(f"❌ {json_file.name}: {e}")
+
+    print(f"\n{'='*60}")
+    print(f"Processing complete!")
+    print(f"  Total: {len(json_files)}")
+    print(f"  Successful: {successful}")
+    print(f"  Failed: {failed}")
+    print(f"{'='*60}")
+
+
+def main():
+    """Main entry point for the script."""
+    parser = argparse.ArgumentParser(
+        description="Process raw transcript JSONs into formatted training data"
+    )
+
+    parser.add_argument(
+        "-i",
+        "--input-dir",
+        type=Path,
+        required=True,
+        help="Directory containing raw transcript JSON files",
+    )
+
+    parser.add_argument(
+        "-o",
+        "--output-dir",
+        type=Path,
+        required=True,
+        help="Directory where processed transcript JSON files will be saved",
+    )
+
+    args = parser.parse_args()
+
+    if not args.input_dir.exists():
+        parser.error(f"Input directory does not exist: {args.input_dir}")
+
+    if not args.input_dir.is_dir():
+        parser.error(f"Input path is not a directory: {args.input_dir}")
+
+    process_all_files(
+        input_dir=args.input_dir,
+        output_dir=args.output_dir,
+    )
+
+
+if __name__ == "__main__":
+    main()
