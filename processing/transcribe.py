@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """
-Script to process MP3 files and generate transcripts using OpenAI's transcription API.
+Script to process MP3 files and generate raw transcripts using OpenAI's transcription API.
+
+This is step 1 in the pipeline:
+1. transcribe.py: Convert MP3 files to raw transcript JSONs
+2. process_transcripts.py: Convert raw transcript JSONs to processed transcript JSONs
 """
 import argparse
 import base64
