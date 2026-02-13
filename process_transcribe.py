@@ -53,6 +53,8 @@ def transcribe_audio(
         {
             "speaker": segment.speaker,
             "text": segment.text,
+            "start": segment.start,
+            "end": segment.end,
         }
         for segment in transcript.segments
     ]
