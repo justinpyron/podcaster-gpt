@@ -166,7 +166,7 @@ def process_all_files(input_dir: Path, output_dir: Path) -> None:
             with open(json_file, "r", encoding="utf-8") as f:
                 raw_data = json.load(f)
 
-            segments = [RawTranscriptSegment(**item) for item in raw_data]
+            segments = [RawTranscriptSegment.model_validate(item) for item in raw_data]
             processed_messages = process_transcript(segments)
 
             output_path = output_dir / json_file.name
