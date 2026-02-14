@@ -26,7 +26,7 @@ Return only the exact text you say in the conversation. So, do not return any ot
 def generate_rejected_completion(
     client: Together,
     prompt: list[Message],
-    model: str,
+    model_id: str,
 ) -> Message:
     """
     Generate a fake (rejected) completion for a given prompt using Together AI.
@@ -34,7 +34,7 @@ def generate_rejected_completion(
     Args:
         client: Together AI client instance.
         prompt: List of preceding messages.
-        model: Together AI model name to use.
+        model_id: Together AI model name to use.
 
     Returns:
         A Message object with role "assistant" containing the generated text.
@@ -44,7 +44,7 @@ def generate_rejected_completion(
     ]
 
     response = client.chat.completions.create(
-        model=model,
+        model=model_id,
         messages=messages,
     )
 
@@ -55,7 +55,7 @@ def generate_rejected_completion(
 def process_single_example(
     client: Together,
     sft_example: SFTExample,
-    model: str,
+    model_id: str,
     min_words: int,
 ) -> DPOExample | None:
     """
@@ -64,7 +64,7 @@ def process_single_example(
     Args:
         client: Together AI client.
         sft_example: The SFT example to process.
-        model: Model to use for generation.
+        model_id: Model ID to use for generation.
         min_words: Minimum word count for the chosen completion.
 
     Returns:
@@ -78,7 +78,9 @@ def process_single_example(
         return None
 
     # Generate rejected completion
-    rejected_message = generate_rejected_completion(client, sft_example.prompt, model)
+    rejected_message = generate_rejected_completion(
+        client, sft_example.prompt, model_id
+    )
 
     return DPOExample(
         prompt=sft_example.prompt,
@@ -90,7 +92,7 @@ def process_single_example(
 def process_all_files(
     input_dir: Path,
     output_dir: Path,
-    model: str,
+    model_id: str,
     min_words: int,
     max_workers: int,
 ) -> None:
@@ -100,7 +102,7 @@ def process_all_files(
     Args:
         input_dir: Directory containing SFT example JSON files.
         output_dir: Directory where DPO example JSON files will be saved.
-        model: Together AI model to use.
+        model_id: Together AI model ID to use.
         min_words: Minimum words for chosen completion.
         max_workers: Maximum parallel workers.
     """
@@ -114,7 +116,7 @@ def process_all_files(
         return
 
     print(f"Found {len(json_files)} JSON file(s) to process")
-    print(f"Using model: {model}")
+    print(f"Using model ID: {model_id}")
     print(f"Filtering examples with < {min_words} words")
     print(f"Using {max_workers} workers\n")
 
@@ -134,7 +136,7 @@ def process_all_files(
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 future_to_ex = {
                     executor.submit(
-                        process_single_example, client, ex, model, min_words
+                        process_single_example, client, ex, model_id, min_words
                     ): ex
                     for ex in sft_examples
                 }
@@ -162,7 +164,7 @@ def process_all_files(
 
         except Exception as e:
             failed_files += 1
-            print(f"✗ {json_file.name}: {e}")
+            print(f"❌ {json_file.name}: {e}")
 
     print(f"\n{'='*60}")
     print(f"Processing complete!")
@@ -195,10 +197,10 @@ def main():
 
     parser.add_argument(
         "-m",
-        "--model",
+        "--model-id",
         type=str,
         default="openai/gpt-oss-120b",
-        help="Together AI model name to use (default: openai/gpt-oss-120b)",
+        help="Together AI model ID to use (default: openai/gpt-oss-120b)",
     )
 
     parser.add_argument(
@@ -228,7 +230,7 @@ def main():
     process_all_files(
         input_dir=args.input_dir,
         output_dir=args.output_dir,
-        model=args.model,
+        model_id=args.model_id,
         min_words=args.min_words,
         max_workers=args.workers,
     )
