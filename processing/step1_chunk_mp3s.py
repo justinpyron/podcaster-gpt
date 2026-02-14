@@ -3,11 +3,11 @@
 Split MP3 files into overlapping chunks.
 
 This is step 1 in the pipeline:
-1. chunk_mp3s.py: Split MP3 files into overlapping chunks
-2. transcribe.py: Convert MP3 files to raw transcript JSONs
-3. process_transcripts.py: Convert raw transcript JSONs to processed transcript JSONs
-4. create_sft_examples.py: Convert processed transcripts to SFT examples
-5. create_dpo_examples.py: Generate rejected completions for DPO training data
+1. step1_chunk_mp3s.py: Split MP3 files into overlapping chunks
+2. step2_transcribe.py: Convert MP3 files to raw transcript JSONs
+3. step3_process_transcripts.py: Convert raw transcript JSONs to processed transcript JSONs
+4. step4_create_sft_examples.py: Convert processed transcripts to SFT examples
+5. step5_create_dpo_examples.py: Generate rejected completions for DPO training data
 """
 
 import argparse
