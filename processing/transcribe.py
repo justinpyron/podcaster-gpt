@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """
-Script to process MP3 files and generate raw transcripts using OpenAI's transcription API.
+Convert MP3 files to raw transcripts using OpenAI's transcription API.
 
-This is step 1 in the pipeline:
-1. transcribe.py: Convert MP3 files to raw transcript JSONs
-2. process_transcripts.py: Convert raw transcript JSONs to processed transcript JSONs
+This is step 2 in the pipeline:
+1. chunk_mp3s.py: Split MP3 files into overlapping chunks
+2. transcribe.py: Convert MP3 files to raw transcript JSONs
+3. process_transcripts.py: Convert raw transcript JSONs to processed transcript JSONs
+4. create_sft_examples.py: Convert processed transcripts to SFT examples
+5. create_dpo_examples.py: Generate rejected completions for DPO training data
 """
 import argparse
 import base64

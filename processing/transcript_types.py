@@ -1,5 +1,12 @@
 """
 Pydantic models for transcript data objects used throughout the processing pipeline.
+
+The pipeline consists of the following steps:
+1. chunk_mp3s.py: Split MP3 files into overlapping chunks
+2. transcribe.py: Convert MP3 files to raw transcript JSONs
+3. process_transcripts.py: Convert raw transcript JSONs to processed transcript JSONs
+4. create_sft_examples.py: Convert processed transcripts to SFT examples
+5. create_dpo_examples.py: Generate rejected completions for DPO training data
 """
 from pydantic import BaseModel
 
