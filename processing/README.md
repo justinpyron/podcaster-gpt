@@ -43,3 +43,35 @@ This folder contains the scripts for the 5-step data processing pipeline used to
 ## Shared Utilities
 
 *   **`data_types.py`**: Pydantic models (e.g., `Message`, `SFTExample`, `DPOExample`) used across the pipeline to ensure data consistency.
+
+## Example Execution
+
+Run the full pipeline sequentially from the project root using `uv`. This example processes the `rogan` podcast:
+
+```bash
+# 1. Chunk audio files
+uv run processing/step1_chunk_mp3s.py \
+    -i data/podcasts/rogan \
+    -o data/chunks/rogan
+
+# 2. Transcribe chunks (requires OpenAI API key)
+uv run processing/step2_transcribe.py \
+    -i data/chunks/rogan \
+    -o data/transcripts_raw/rogan \
+    -s data/speaker_samples/rogan.mp3
+
+# 3. Clean and format transcripts
+uv run processing/step3_process_transcripts.py \
+    -i data/transcripts_raw/rogan \
+    -o data/transcripts_processed/rogan
+
+# 4. Create SFT examples
+uv run processing/step4_create_sft_examples.py \
+    -i data/transcripts_processed/rogan \
+    -o data/examples_sft/rogan
+
+# 5. Generate DPO examples (requires Together AI API key)
+uv run processing/step5_create_dpo_examples.py \
+    -i data/examples_sft/rogan \
+    -o data/examples_dpo/rogan
+```
