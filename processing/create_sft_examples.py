@@ -11,26 +11,28 @@ import argparse
 import json
 from pathlib import Path
 
+from transcript_types import ProcessedTranscriptMessage, SftExample
+
 
 def create_finetune_examples(
-    messages: list[dict],
-) -> list[tuple[list[dict], list[dict]]]:
+    messages: list[ProcessedTranscriptMessage],
+) -> list[SftExample]:
     """
     Transform a conversation into training examples for fine-tuning an LLM.
 
-    For each assistant message, creates a (prompt, completion) pair where prompt
-    is all preceding messages and completion is the assistant message.
+    For each assistant message, creates an SftExample where prompt is all
+    preceding messages and completion is the assistant message.
 
     Args:
-        messages: List of message dicts with 'role' and 'content' keys.
+        messages: List of ProcessedTranscriptMessage objects.
 
     Returns:
-        List of (prompt, completion) tuples.
+        List of SftExample objects.
     """
     return [
-        (messages[:i], [m])
+        SftExample(prompt=messages[:i], completion=[m])
         for i, m in enumerate(messages)
-        if m.get("role") == "assistant" and i > 0
+        if m.role == "assistant" and i > 0
     ]
 
 
@@ -59,17 +61,15 @@ def process_all_files(input_dir: Path, output_dir: Path) -> None:
     for json_file in json_files:
         try:
             with open(json_file, "r", encoding="utf-8") as f:
-                messages = json.load(f)
+                raw_data = json.load(f)
 
+            messages = [ProcessedTranscriptMessage.model_validate(m) for m in raw_data]
             examples = create_finetune_examples(messages)
 
             output_path = output_dir / json_file.name
             with open(output_path, "w", encoding="utf-8") as f:
                 json.dump(
-                    [
-                        {"prompt": prompt, "completion": completion}
-                        for prompt, completion in examples
-                    ],
+                    [e.model_dump() for e in examples],
                     f,
                     indent=4,
                     ensure_ascii=False,
