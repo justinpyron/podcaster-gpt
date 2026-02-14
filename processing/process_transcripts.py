@@ -98,7 +98,7 @@ def relabel_non_podcasters_as_guest(segments: RawTranscript) -> RawTranscript:
     """
     return [
         s.model_copy(
-            update={"speaker": "guest" if s.speaker != "podcaster" else "podcaster"}
+            update={"speaker": "podcaster" if s.speaker == "podcaster" else "guest"}
         )
         for s in segments
     ]
@@ -123,30 +123,49 @@ def transform_into_chatbot_format(segments: RawTranscript) -> ProcessedTranscrip
     ]
 
 
-def process_transcript(segments: RawTranscript) -> ProcessedTranscript:
+def process_transcript(
+    segments: RawTranscript,
+    merge_threshold_seconds: float = 1.0,
+    merge_separator: str = "\n\n",
+) -> ProcessedTranscript:
     """
     Process a raw transcript and generate formatted messages for training.
 
     Args:
         segments: RawTranscript (list of RawTranscriptSegment).
+        merge_threshold_seconds: Time gap (in seconds) between same-speaker segments
+            above which the merge separator is inserted.
+        merge_separator: String inserted between merged segments when the time gap
+            exceeds the threshold.
 
     Returns:
         ProcessedTranscript (list of ProcessedTranscriptMessage).
     """
     segments = drop_first_and_last(segments)
     segments = relabel_non_podcasters_as_guest(segments)
-    segments = merge_adjacent_speakers(segments, separator="\n\n")
+    segments = merge_adjacent_speakers(
+        segments,
+        threshold_seconds=merge_threshold_seconds,
+        separator=merge_separator,
+    )
     segments = clean_messages(segments)
     return transform_into_chatbot_format(segments)
 
 
-def process_all_files(input_dir: Path, output_dir: Path) -> None:
+def process_all_files(
+    input_dir: Path,
+    output_dir: Path,
+    merge_threshold_seconds: float = 1.0,
+    merge_separator: str = "\n\n",
+) -> None:
     """
     Process all JSON transcript files in the input directory and save processed versions.
 
     Args:
         input_dir: Directory containing raw transcript JSON files
         output_dir: Directory where processed transcript JSON files will be saved
+        merge_threshold_seconds: Time gap threshold for inserting separator between merged segments
+        merge_separator: String inserted between merged segments when time gap exceeds threshold
     """
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -167,7 +186,11 @@ def process_all_files(input_dir: Path, output_dir: Path) -> None:
                 raw_data = json.load(f)
 
             segments = [RawTranscriptSegment.model_validate(item) for item in raw_data]
-            processed_messages = process_transcript(segments)
+            processed_messages = process_transcript(
+                segments,
+                merge_threshold_seconds=merge_threshold_seconds,
+                merge_separator=merge_separator,
+            )
 
             output_path = output_dir / json_file.name
             with open(output_path, "w", encoding="utf-8") as f:
@@ -215,6 +238,24 @@ def main():
         help="Directory where processed transcript JSON files will be saved",
     )
 
+    parser.add_argument(
+        "-mt",
+        "--merge-threshold-seconds",
+        type=float,
+        default=1.0,
+        help="Time gap in seconds above which a separator is inserted when merging "
+        "adjacent same-speaker segments (default: 1.0)",
+    )
+
+    parser.add_argument(
+        "-ms",
+        "--merge-separator",
+        type=str,
+        default="\n\n",
+        help="String inserted between merged segments when the time gap exceeds the "
+        'threshold (default: "\\n\\n")',
+    )
+
     args = parser.parse_args()
 
     if not args.input_dir.exists():
@@ -226,6 +267,8 @@ def main():
     process_all_files(
         input_dir=args.input_dir,
         output_dir=args.output_dir,
+        merge_threshold_seconds=args.merge_threshold_seconds,
+        merge_separator=args.merge_separator,
     )
 
 
