@@ -13,7 +13,7 @@ import argparse
 import json
 from pathlib import Path
 
-from transcript_types import Message, SFTExample
+from data_types import Message, SFTExample
 
 
 def create_finetune_examples(

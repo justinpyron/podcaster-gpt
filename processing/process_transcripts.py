@@ -13,12 +13,7 @@ import argparse
 import json
 from pathlib import Path
 
-from transcript_types import (
-    Message,
-    ProcessedTranscript,
-    RawTranscript,
-    TranscriptSegment,
-)
+from data_types import Message, ProcessedTranscript, RawTranscript, TranscriptSegment
 
 
 def drop_first_and_last(segments: RawTranscript) -> RawTranscript:

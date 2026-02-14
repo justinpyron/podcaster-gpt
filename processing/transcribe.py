@@ -16,8 +16,8 @@ import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
+from data_types import RawTranscript, TranscriptSegment
 from openai import OpenAI
-from transcript_types import RawTranscript, TranscriptSegment
 
 
 def to_data_url(path: Path) -> str:

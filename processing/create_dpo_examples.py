@@ -15,8 +15,8 @@ import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
+from data_types import DPOExample, Message, SFTExample
 from together import Together
-from transcript_types import DPOExample, Message, SFTExample
 
 SYSTEM_PROMPT = """You ("assistant") are having a verbal conversation with a friend ("user"). Continue the conversation.
 
