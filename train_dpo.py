@@ -19,7 +19,6 @@ Usage:
         [--num-epochs 1] \
         [--batch-size 4] \
         [--max-length 2048] \
-        [--max-prompt-length 1800] \
         [--beta 0.1] \
         [--gradient-accumulation-steps 4] \
         [--logging-steps 0.1] \
@@ -115,7 +114,6 @@ def train(
     batch_size: int,
     gradient_accumulation_steps: int,
     max_length: int,
-    max_prompt_length: int,
     beta: float,
     logging_steps: float,
     eval_steps: float,
@@ -168,7 +166,6 @@ def train(
         per_device_eval_batch_size=batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
         max_length=max_length,
-        max_prompt_length=max_prompt_length,
         # Logging & evaluation
         logging_strategy="steps",
         logging_steps=logging_steps,
@@ -214,7 +211,6 @@ def main(
     batch_size: int = 4,
     gradient_accumulation_steps: int = 4,
     max_length: int = 2048,
-    max_prompt_length: int = 1800,
     beta: float = 0.1,
     logging_steps: float = 0.1,
     eval_steps: float = 0.1,
@@ -245,7 +241,6 @@ def main(
         batch_size=batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
         max_length=max_length,
-        max_prompt_length=max_prompt_length,
         beta=beta,
         logging_steps=logging_steps,
         eval_steps=eval_steps,
