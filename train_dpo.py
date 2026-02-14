@@ -1,10 +1,9 @@
 """
 DPO training with LoRA on Modal.
 
-Loads a base model plus an existing SFT LoRA adapter, then trains the adapter
-further with Direct Preference Optimization. The SFT adapter is loaded twice:
-once as the trainable policy ("train") and once as the frozen reference
-("reference"), following the TRL "Option 3" pattern for PEFT-based DPO.
+Trains a fresh LoRA adapter on top of a frozen base model using Direct
+Preference Optimization. The trainer uses the base model as a reference
+policy automatically.
 
 Logs are sent to Weights & Biases.
 
@@ -14,7 +13,6 @@ Usage:
         --data-path-train <path-in-volume> \
         --data-path-val <path-in-volume> \
         --name <run-name> \
-        [--adapter-path <path-in-volume>] \
         [--lora-r 16] \
         [--lora-alpha 32] \
         [--learning-rate 5e-5] \
@@ -110,7 +108,6 @@ def train(
     data_path_train: str,
     data_path_val: str,
     name: str,
-    adapter_path: str | None,
     lora_r: int,
     lora_alpha: int,
     learning_rate: float,
@@ -123,11 +120,11 @@ def train(
     logging_steps: float,
     eval_steps: float,
 ):
-    """Run DPO training with LoRA. Handles both fresh adapters and existing SFT adapters."""
+    """Run DPO training with a fresh LoRA adapter on a frozen base model."""
     import os
     from datetime import datetime, timezone
 
-    from peft import LoraConfig, PeftModel
+    from peft import LoraConfig
     from transformers import AutoModelForCausalLM, AutoTokenizer
     from trl import DPOConfig, DPOTrainer
 
@@ -150,42 +147,19 @@ def train(
 
     # Model and Adapter Setup
     model = AutoModelForCausalLM.from_pretrained(model_path_full)
-    peft_config = None
-    model_adapter_name = None
-    ref_adapter_name = None
-
-    if adapter_path:
-        # Case A: Load an existing SFT adapter twice (Option 3)
-        print(f"Loading existing SFT adapter from: {adapter_path}")
-        adapter_path_full = f"{VOLUME_MOUNT_PATH}/{adapter_path}"
-        model = PeftModel.from_pretrained(
-            model,
-            adapter_path_full,
-            is_trainable=True,
-            adapter_name="train",
-        )
-        model.load_adapter(adapter_path_full, adapter_name="reference")
-        model_adapter_name = "train"
-        ref_adapter_name = "reference"
-    else:
-        # Case B: Create a fresh LoRA adapter
-        print(f"Creating a fresh LoRA adapter (r={lora_r}, alpha={lora_alpha})")
-        peft_config = LoraConfig(
-            r=lora_r,
-            lora_alpha=lora_alpha,
-            target_modules="all-linear",
-            lora_dropout=0.05,
-            bias="none",
-            task_type="CAUSAL_LM",
-        )
+    peft_config = LoraConfig(
+        r=lora_r,
+        lora_alpha=lora_alpha,
+        target_modules="all-linear",
+        lora_dropout=0.05,
+        bias="none",
+        task_type="CAUSAL_LM",
+    )
 
     # Training config
-    config_training = DPOConfig(
+    dpo_config = DPOConfig(
         output_dir=output_dir_full,
         run_name=run_name,
-        # Adapter naming (only needed if we manually loaded them)
-        model_adapter_name=model_adapter_name,
-        ref_adapter_name=ref_adapter_name,
         # Hyperparameters
         beta=beta,
         learning_rate=learning_rate,
@@ -211,7 +185,7 @@ def train(
     # Train
     trainer = DPOTrainer(
         model=model,
-        args=config_training,
+        args=dpo_config,
         train_dataset=dataset_train,
         eval_dataset=dataset_val,
         processing_class=tokenizer,
@@ -233,7 +207,6 @@ def main(
     data_path_train: str,
     data_path_val: str,
     name: str,
-    adapter_path: str | None = None,
     lora_r: int = 16,
     lora_alpha: int = 32,
     learning_rate: float = 5e-5,
@@ -250,10 +223,7 @@ def main(
     print("=" * 80)
     print("Launching DPO training job on Modal...")
     print(f"  Base model: {model_path}")
-    if adapter_path:
-        print(f"  Existing adapter (SFT): {adapter_path}")
-    else:
-        print(f"  Creating fresh LoRA adapter: r={lora_r}, alpha={lora_alpha}")
+    print(f"  Fresh LoRA adapter: r={lora_r}, alpha={lora_alpha}")
     print(f"  Train data: {data_path_train}")
     print(f"  Val data: {data_path_val}")
     print(f"  Run name: {name}")
@@ -268,7 +238,6 @@ def main(
         data_path_train=data_path_train,
         data_path_val=data_path_val,
         name=name,
-        adapter_path=adapter_path,
         lora_r=lora_r,
         lora_alpha=lora_alpha,
         learning_rate=learning_rate,
