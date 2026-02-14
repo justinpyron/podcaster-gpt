@@ -110,6 +110,9 @@ def process_all_files(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     json_files = sorted(input_dir.glob("*.json"))
+    json_files = json_files[
+        :2
+    ]  # TODO: REMOVE AFTER TESTING <------------------------------------------------------------------------------------------
 
     if not json_files:
         print(f"No JSON files found in {input_dir}")
@@ -215,8 +218,8 @@ def main():
         "-t",
         "--workers",
         type=int,
-        default=100,
-        help="Maximum parallel workers (default: 100)",
+        default=50,
+        help="Maximum parallel workers (default: 50)",
     )
 
     args = parser.parse_args()
