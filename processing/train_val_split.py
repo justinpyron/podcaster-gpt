@@ -8,7 +8,9 @@ JSON files: train.json and val.json.
 Usage:
     python processing/train_val_split.py \
         --input-dir data/examples_dpo/rogan \
-        --output-dir data/examples_dpo/rogan-split
+        --output-dir data/examples_dpo/rogan-split \
+        [--train-ratio 0.9] \
+        [--seed 42]
 """
 
 import argparse
@@ -62,6 +64,12 @@ def main():
         help="Directory to save train.json and val.json",
     )
     parser.add_argument(
+        "--train-ratio",
+        type=float,
+        default=0.9,
+        help="Ratio of files to include in the training set (default: 0.9)",
+    )
+    parser.add_argument(
         "--seed", type=int, default=42, help="Random seed for reproducibility"
     )
     args = parser.parse_args()
@@ -81,7 +89,9 @@ def main():
     print(f"Found {len(json_files)} JSON files.")
 
     # Split files
-    train_files, val_files = split_files(json_files, train_ratio=0.9, seed=args.seed)
+    train_files, val_files = split_files(
+        json_files, train_ratio=args.train_ratio, seed=args.seed
+    )
     print(f"Split: {len(train_files)} train files, {len(val_files)} val files.")
 
     # Load and unpack
