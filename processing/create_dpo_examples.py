@@ -218,8 +218,8 @@ def main():
         "-t",
         "--workers",
         type=int,
-        default=10,
-        help="Maximum parallel workers (default: 10)",
+        default=100,
+        help="Maximum parallel workers (default: 100)",
     )
 
     args = parser.parse_args()
