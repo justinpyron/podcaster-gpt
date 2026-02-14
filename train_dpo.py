@@ -30,7 +30,6 @@ Usage:
 
 import json
 from pathlib import Path
-from typing import Optional
 
 import modal
 
@@ -38,14 +37,14 @@ import modal
 # Configuration
 # =============================================================================
 
-APP_NAME = "impersonate-gpt-dpo"
-VOLUME_NAME = "impersonate-gpt"
+APP_NAME = "podcaster-gpt-dpo"
+VOLUME_NAME = "podcaster-gpt"
 VOLUME_MOUNT_PATH = "/data"
 WEIGHTS_DIR = "weights_dpo"
 GPU = "A10"
 TIMEOUT_SECONDS = 24 * 60 * 60
 WANDB_ENTITY = "pyron"
-WANDB_PROJECT = "impersonate-gpt-dpo"
+WANDB_PROJECT = "podcaster-gpt-dpo"
 
 # =============================================================================
 # Modal Setup
@@ -79,7 +78,7 @@ def load_dpo_dataset(path: str):
     """
     from datasets import Dataset
 
-    all_examples = []
+    examples = []
     p = Path(path)
     if p.is_file():
         files = [p]
@@ -88,13 +87,13 @@ def load_dpo_dataset(path: str):
 
     for filepath in files:
         with open(filepath, "r") as f:
-            all_examples.extend(json.load(f))
+            examples.extend(json.load(f))
 
     return Dataset.from_dict(
         {
-            "prompt": [ex["prompt"] for ex in all_examples],
-            "chosen": [ex["chosen"] for ex in all_examples],
-            "rejected": [ex["rejected"] for ex in all_examples],
+            "prompt": [ex["prompt"] for ex in examples],
+            "chosen": [ex["chosen"] for ex in examples],
+            "rejected": [ex["rejected"] for ex in examples],
         }
     )
 
@@ -111,7 +110,7 @@ def train(
     data_path_train: str,
     data_path_val: str,
     name: str,
-    adapter_path: Optional[str],
+    adapter_path: str | None,
     lora_r: int,
     lora_alpha: int,
     learning_rate: float,
@@ -148,8 +147,6 @@ def train(
     # Tokenizer
     model_path_full = f"{VOLUME_MOUNT_PATH}/{model_path}"
     tokenizer = AutoTokenizer.from_pretrained(model_path_full)
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
 
     # Model and Adapter Setup
     model = AutoModelForCausalLM.from_pretrained(model_path_full)
@@ -236,7 +233,7 @@ def main(
     data_path_train: str,
     data_path_val: str,
     name: str,
-    adapter_path: Optional[str] = None,
+    adapter_path: str | None = None,
     lora_r: int = 16,
     lora_alpha: int = 32,
     learning_rate: float = 5e-5,
