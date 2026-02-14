@@ -15,6 +15,37 @@ import argparse
 import json
 import random
 from pathlib import Path
+from typing import Any
+
+
+def load_examples(files: list[Path]) -> list[dict[str, Any]]:
+    """Reads a list of JSON files and unpacks their contents into a single list."""
+    all_examples = []
+    for f in files:
+        with open(f, "r") as f_in:
+            data = json.load(f_in)
+            if isinstance(data, list):
+                all_examples.extend(data)
+            else:
+                all_examples.append(data)
+    return all_examples
+
+
+def split_files(
+    files: list[Path], train_ratio: float = 0.9, seed: int = 42
+) -> tuple[list[Path], list[Path]]:
+    """Shuffles and splits a list of files into two sets."""
+    random.seed(seed)
+    shuffled = sorted(files)  # Sort first for deterministic shuffling across OSs
+    random.shuffle(shuffled)
+
+    split_idx = int(len(shuffled) * train_ratio)
+
+    # Ensure at least one file in val if possible
+    if split_idx == len(shuffled) and len(shuffled) > 1:
+        split_idx = len(shuffled) - 1
+
+    return shuffled[:split_idx], shuffled[split_idx:]
 
 
 def main():
@@ -22,16 +53,11 @@ def main():
         description="Split DPO JSON files into train and val sets."
     )
     parser.add_argument(
-        "-i",
-        "--input-dir",
-        type=str,
-        required=True,
-        help="Directory containing input JSON files",
+        "-i", "--input-dir", required=True, help="Directory containing input JSON files"
     )
     parser.add_argument(
         "-o",
         "--output-dir",
-        type=str,
         required=True,
         help="Directory to save train.json and val.json",
     )
@@ -40,9 +66,6 @@ def main():
     )
     args = parser.parse_args()
 
-    # Set seed
-    random.seed(args.seed)
-
     input_path = Path(args.input_dir)
     output_path = Path(args.output_dir)
 
@@ -50,56 +73,29 @@ def main():
         print(f"Error: Input directory {input_path} does not exist.")
         return
 
-    # Find all JSON files
-    json_files = sorted(list(input_path.glob("*.json")))
+    json_files = list(input_path.glob("*.json"))
     if not json_files:
         print(f"No JSON files found in {input_path}")
         return
 
     print(f"Found {len(json_files)} JSON files.")
 
-    # Shuffle files
-    random.shuffle(json_files)
+    # Split files
+    train_files, val_files = split_files(json_files, train_ratio=0.9, seed=args.seed)
+    print(f"Split: {len(train_files)} train files, {len(val_files)} val files.")
 
-    # 90/10 split
-    split_idx = int(len(json_files) * 0.9)
-    # Ensure at least one file in val if there are enough files
-    if split_idx == len(json_files) and len(json_files) > 1:
-        split_idx = len(json_files) - 1
-
-    train_files = json_files[:split_idx]
-    val_files = json_files[split_idx:]
-
-    print(
-        f"Splitting into {len(train_files)} train files and {len(val_files)} val files."
-    )
-
-    def collect_examples(files):
-        examples = []
-        for f in files:
-            with open(f, "r") as f_in:
-                data = json.load(f_in)
-                if isinstance(data, list):
-                    examples.extend(data)
-                else:
-                    examples.append(data)
-        return examples
-
-    train_examples = collect_examples(train_files)
-    val_examples = collect_examples(val_files)
-
+    # Load and unpack
+    train_examples = load_examples(train_files)
+    val_examples = load_examples(val_files)
     print(f"Total examples: {len(train_examples)} train, {len(val_examples)} val.")
 
-    # Create output directory
+    # Save
     output_path.mkdir(parents=True, exist_ok=True)
-
-    with open(output_path / "train.json", "w") as f:
-        json.dump(train_examples, f, indent=4)
-
-    with open(output_path / "val.json", "w") as f:
-        json.dump(val_examples, f, indent=4)
-
-    print(f"Saved split to {output_path}")
+    for name, data in [("train.json", train_examples), ("val.json", val_examples)]:
+        out_file = output_path / name
+        with open(out_file, "w") as f:
+            json.dump(data, f, indent=4)
+        print(f"Saved {name} to {out_file}")
 
 
 if __name__ == "__main__":
