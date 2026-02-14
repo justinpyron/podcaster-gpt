@@ -11,26 +11,26 @@ import argparse
 import json
 from pathlib import Path
 
-from transcript_types import ProcessedTranscriptMessage, SftExample
+from transcript_types import Message, SFTExample
 
 
 def create_finetune_examples(
-    messages: list[ProcessedTranscriptMessage],
-) -> list[SftExample]:
+    messages: list[Message],
+) -> list[SFTExample]:
     """
     Transform a conversation into training examples for fine-tuning an LLM.
 
-    For each assistant message, creates an SftExample where prompt is all
+    For each assistant message, creates an SFTExample where prompt is all
     preceding messages and completion is the assistant message.
 
     Args:
-        messages: List of ProcessedTranscriptMessage objects.
+        messages: List of Message objects.
 
     Returns:
-        List of SftExample objects.
+        List of SFTExample objects.
     """
     return [
-        SftExample(prompt=messages[:i], completion=[m])
+        SFTExample(prompt=messages[:i], completion=[m])
         for i, m in enumerate(messages)
         if m.role == "assistant" and i > 0
     ]
@@ -63,7 +63,7 @@ def process_all_files(input_dir: Path, output_dir: Path) -> None:
             with open(json_file, "r", encoding="utf-8") as f:
                 raw_data = json.load(f)
 
-            messages = [ProcessedTranscriptMessage.model_validate(m) for m in raw_data]
+            messages = [Message.model_validate(m) for m in raw_data]
             examples = create_finetune_examples(messages)
 
             output_path = output_dir / json_file.name

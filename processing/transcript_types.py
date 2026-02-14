@@ -4,7 +4,7 @@ Pydantic models for transcript data objects used throughout the processing pipel
 from pydantic import BaseModel
 
 
-class RawTranscriptSegment(BaseModel):
+class TranscriptSegment(BaseModel):
     """A single segment from the OpenAI transcription API output."""
 
     speaker: str
@@ -13,20 +13,20 @@ class RawTranscriptSegment(BaseModel):
     end: float
 
 
-class ProcessedTranscriptMessage(BaseModel):
+class Message(BaseModel):
     """A single message in chatbot training format."""
 
     role: str
     content: str
 
 
-class SftExample(BaseModel):
+class SFTExample(BaseModel):
     """A single SFT training example: prompt messages paired with the target completion."""
 
-    prompt: list[ProcessedTranscriptMessage]
-    completion: list[ProcessedTranscriptMessage]
+    prompt: list[Message]
+    completion: list[Message]
 
 
-RawTranscript = list[RawTranscriptSegment]
+RawTranscript = list[TranscriptSegment]
 
-ProcessedTranscript = list[ProcessedTranscriptMessage]
+ProcessedTranscript = list[Message]

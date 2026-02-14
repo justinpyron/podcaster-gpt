@@ -11,10 +11,10 @@ import json
 from pathlib import Path
 
 from transcript_types import (
+    Message,
     ProcessedTranscript,
-    ProcessedTranscriptMessage,
     RawTranscript,
-    RawTranscriptSegment,
+    TranscriptSegment,
 )
 
 
@@ -24,7 +24,7 @@ def drop_first_and_last(segments: RawTranscript) -> RawTranscript:
     clips that may be incomplete because they crossed a chunk boundary.
 
     Args:
-        segments: RawTranscript (list of RawTranscriptSegment).
+        segments: RawTranscript (list of TranscriptSegment).
 
     Returns:
         RawTranscript with first and last segments dropped. If the list has 2 or fewer segments, returns an empty list.
@@ -42,7 +42,7 @@ def merge_adjacent_speakers(
     If the time between segments is >= threshold_seconds, separate by the given separator; otherwise, concatenate directly.
 
     Args:
-        segments: RawTranscript (list of RawTranscriptSegment).
+        segments: RawTranscript (list of TranscriptSegment).
         threshold_seconds: float, threshold in seconds to insert the separator between merged segments
         separator: str, string inserted between merged segments when the time gap is >= threshold
 
@@ -78,7 +78,7 @@ def clean_messages(segments: RawTranscript) -> RawTranscript:
     Clean segments by removing leading and trailing whitespace from the 'text' field.
 
     Args:
-        segments: RawTranscript (list of RawTranscriptSegment).
+        segments: RawTranscript (list of TranscriptSegment).
 
     Returns:
         RawTranscript with text fields stripped of leading and trailing whitespace.
@@ -91,7 +91,7 @@ def relabel_non_podcasters_as_guest(segments: RawTranscript) -> RawTranscript:
     Relabel the 'speaker' value of all segments to 'guest' if it is not equal to 'podcaster'.
 
     Args:
-        segments: RawTranscript (list of RawTranscriptSegment).
+        segments: RawTranscript (list of TranscriptSegment).
 
     Returns:
         RawTranscript with the 'speaker' field set to 'guest' if it was not 'podcaster'.
@@ -109,13 +109,13 @@ def transform_into_chatbot_format(segments: RawTranscript) -> ProcessedTranscrip
     Transform raw transcript segments into chatbot format.
 
     Args:
-        segments: RawTranscript (list of RawTranscriptSegment).
+        segments: RawTranscript (list of TranscriptSegment).
 
     Returns:
-        ProcessedTranscript (list of ProcessedTranscriptMessage).
+        ProcessedTranscript (list of Message).
     """
     return [
-        ProcessedTranscriptMessage(
+        Message(
             role="assistant" if s.speaker == "podcaster" else "user",
             content=s.text,
         )
@@ -132,14 +132,14 @@ def process_transcript(
     Process a raw transcript and generate formatted messages for training.
 
     Args:
-        segments: RawTranscript (list of RawTranscriptSegment).
+        segments: RawTranscript (list of TranscriptSegment).
         merge_threshold_seconds: Time gap (in seconds) between same-speaker segments
             above which the merge separator is inserted.
         merge_separator: String inserted between merged segments when the time gap
             exceeds the threshold.
 
     Returns:
-        ProcessedTranscript (list of ProcessedTranscriptMessage).
+        ProcessedTranscript (list of Message).
     """
     segments = drop_first_and_last(segments)
     segments = relabel_non_podcasters_as_guest(segments)
@@ -185,7 +185,7 @@ def process_all_files(
             with open(json_file, "r", encoding="utf-8") as f:
                 raw_data = json.load(f)
 
-            segments = [RawTranscriptSegment.model_validate(item) for item in raw_data]
+            segments = [TranscriptSegment.model_validate(item) for item in raw_data]
             processed_messages = process_transcript(
                 segments,
                 merge_threshold_seconds=merge_threshold_seconds,

@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from openai import OpenAI
-from transcript_types import RawTranscript, RawTranscriptSegment
+from transcript_types import RawTranscript, TranscriptSegment
 
 
 def to_data_url(path: Path) -> str:
@@ -37,7 +37,7 @@ def transcribe_audio(
         speaker_reference_path: Path to the known speaker reference MP3 audio file
 
     Returns:
-        RawTranscript (list of RawTranscriptSegment)
+        RawTranscript (list of TranscriptSegment)
     """
     with open(audio_path, "rb") as audio_file:
         transcript = client.audio.transcriptions.create(
@@ -54,7 +54,7 @@ def transcribe_audio(
 
     # Process the transcript segments
     segments = [
-        RawTranscriptSegment(
+        TranscriptSegment(
             speaker=segment.speaker,
             text=segment.text,
             start=segment.start,
