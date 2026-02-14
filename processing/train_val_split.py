@@ -34,7 +34,9 @@ def load_examples(files: list[Path]) -> list[dict[str, Any]]:
 
 
 def split_files(
-    files: list[Path], train_ratio: float = 0.9, seed: int = 42
+    files: list[Path],
+    train_ratio: float = 0.9,
+    seed: int = 42,
 ) -> tuple[list[Path], list[Path]]:
     """Shuffles and splits a list of files into two sets."""
     random.seed(seed)
@@ -55,7 +57,10 @@ def main():
         description="Split DPO JSON files into train and val sets."
     )
     parser.add_argument(
-        "-i", "--input-dir", required=True, help="Directory containing input JSON files"
+        "-i",
+        "--input-dir",
+        required=True,
+        help="Directory containing input JSON files",
     )
     parser.add_argument(
         "-o",
@@ -90,7 +95,9 @@ def main():
 
     # Split files
     train_files, val_files = split_files(
-        json_files, train_ratio=args.train_ratio, seed=args.seed
+        json_files,
+        train_ratio=args.train_ratio,
+        seed=args.seed,
     )
     print(f"Split: {len(train_files)} train files, {len(val_files)} val files.")
 
@@ -101,7 +108,10 @@ def main():
 
     # Save
     output_path.mkdir(parents=True, exist_ok=True)
-    for name, data in [("train.json", train_examples), ("val.json", val_examples)]:
+    for name, data in [
+        ("train.json", train_examples),
+        ("val.json", val_examples),
+    ]:
         out_file = output_path / name
         with open(out_file, "w") as f:
             json.dump(data, f, indent=4)
