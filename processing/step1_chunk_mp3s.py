@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """
-Script to split MP3 files into chunks.
+Split MP3 files into overlapping chunks.
 
-Iterates through MP3 files in an input folder, splits each into overlapping chunks,
-and saves them to an output folder with a structured naming convention.
+This is step 1 in the pipeline:
+1. step1_chunk_mp3s.py: Split MP3 files into overlapping chunks
+2. step2_transcribe.py: Convert MP3 files to raw transcript JSONs
+3. step3_process_transcripts.py: Convert raw transcript JSONs to processed transcript JSONs
+4. step4_create_sft_examples.py: Convert processed transcripts to SFT examples
+5. step5_create_dpo_examples.py: Generate rejected completions for DPO training data
 """
 
 import argparse

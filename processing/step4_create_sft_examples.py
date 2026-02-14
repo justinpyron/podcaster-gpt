@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+"""
+Create supervised fine-tuning (SFT) examples from processed transcripts.
+
+This is step 4 in the pipeline:
+1. step1_chunk_mp3s.py: Split MP3 files into overlapping chunks
+2. step2_transcribe.py: Convert MP3 files to raw transcript JSONs
+3. step3_process_transcripts.py: Convert raw transcript JSONs to processed transcript JSONs
+4. step4_create_sft_examples.py: Convert processed transcripts to SFT examples
+5. step5_create_dpo_examples.py: Generate rejected completions for DPO training data
+"""
+import argparse
+import json
+from pathlib import Path
+
+from data_types import Message, SFTExample
+
+
+def create_finetune_examples(
+    messages: list[Message],
+) -> list[SFTExample]:
+    """
+    Transform a conversation into training examples for fine-tuning an LLM.
+
+    For each assistant message, creates an SFTExample where prompt is all
+    preceding messages and completion is the assistant message.
+
+    Args:
+        messages: List of Message objects.
+
+    Returns:
+        List of SFTExample objects.
+    """
+    return [
+        SFTExample(prompt=messages[:i], completion=[m])
+        for i, m in enumerate(messages)
+        if m.role == "assistant" and i > 0
+    ]
+
+
+def process_all_files(input_dir: Path, output_dir: Path) -> None:
+    """
+    Process all JSON transcript files and save SFT examples.
+
+    Args:
+        input_dir: Directory containing processed transcript JSON files.
+        output_dir: Directory where SFT example JSON files will be saved.
+    """
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    json_files = sorted(input_dir.glob("*.json"))
+
+    if not json_files:
+        print(f"No JSON files found in {input_dir}")
+        return
+
+    print(f"Found {len(json_files)} JSON file(s) to process\n")
+
+    successful = 0
+    failed = 0
+    total_examples = 0
+
+    for json_file in json_files:
+        try:
+            with open(json_file, "r", encoding="utf-8") as f:
+                raw_data = json.load(f)
+
+            messages = [Message.model_validate(m) for m in raw_data]
+            examples = create_finetune_examples(messages)
+
+            output_path = output_dir / json_file.name
+            with open(output_path, "w", encoding="utf-8") as f:
+                json.dump(
+                    [e.model_dump() for e in examples],
+                    f,
+                    indent=4,
+                    ensure_ascii=False,
+                )
+
+            successful += 1
+            total_examples += len(examples)
+            print(f"✓ {json_file.name} ({len(examples)} examples)")
+
+        except Exception as e:
+            failed += 1
+            print(f"✗ {json_file.name}: {e}")
+
+    print(f"\n{'='*60}")
+    print(f"Processing complete!")
+    print(f"  Files: {successful} successful, {failed} failed")
+    print(f"  Total SFT examples: {total_examples}")
+    print(f"{'='*60}")
+
+
+def main():
+    """Main entry point for the script."""
+    parser = argparse.ArgumentParser(
+        description="Create SFT training examples from processed transcripts"
+    )
+
+    parser.add_argument(
+        "-i",
+        "--input-dir",
+        type=Path,
+        required=True,
+        help="Directory containing processed transcript JSON files",
+    )
+
+    parser.add_argument(
+        "-o",
+        "--output-dir",
+        type=Path,
+        required=True,
+        help="Directory where SFT example JSON files will be saved",
+    )
+
+    args = parser.parse_args()
+
+    if not args.input_dir.exists():
+        parser.error(f"Input directory does not exist: {args.input_dir}")
+
+    if not args.input_dir.is_dir():
+        parser.error(f"Input path is not a directory: {args.input_dir}")
+
+    process_all_files(
+        input_dir=args.input_dir,
+        output_dir=args.output_dir,
+    )
+
+
+if __name__ == "__main__":
+    main()
