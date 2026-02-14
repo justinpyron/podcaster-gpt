@@ -12,8 +12,8 @@ import json
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Dict, List, Optional
 
+from models import RawTranscript, RawTranscriptSegment
 from openai import OpenAI
 
 
@@ -27,7 +27,7 @@ def transcribe_audio(
     client: OpenAI,
     audio_path: Path,
     speaker_reference_path: Path,
-) -> List[Dict[str, str]]:
+) -> RawTranscript:
     """
     Transcribe an MP3 audio file using OpenAI API with speaker diarization.
 
@@ -37,7 +37,7 @@ def transcribe_audio(
         speaker_reference_path: Path to the known speaker reference MP3 audio file
 
     Returns:
-        List of message dictionaries with 'speaker' and 'text' keys
+        RawTranscript (list of RawTranscriptSegment)
     """
     with open(audio_path, "rb") as audio_file:
         transcript = client.audio.transcriptions.create(
@@ -53,17 +53,17 @@ def transcribe_audio(
         )
 
     # Process the transcript segments
-    messages = [
-        {
-            "speaker": segment.speaker,
-            "text": segment.text,
-            "start": segment.start,
-            "end": segment.end,
-        }
+    segments = [
+        RawTranscriptSegment(
+            speaker=segment.speaker,
+            text=segment.text,
+            start=segment.start,
+            end=segment.end,
+        )
         for segment in transcript.segments
     ]
 
-    return messages
+    return segments
 
 
 def process_single_file(
@@ -71,7 +71,7 @@ def process_single_file(
     output_dir: Path,
     speaker_reference_path: Path,
     client: OpenAI,
-) -> tuple[Path, Optional[int], Optional[str]]:
+) -> tuple[Path, int | None, str | None]:
     """
     Process a single MP3 file and save its transcript.
 
@@ -87,17 +87,19 @@ def process_single_file(
     """
     try:
         # Transcribe the audio
-        messages = transcribe_audio(client, mp3_file, speaker_reference_path)
+        segments = transcribe_audio(client, mp3_file, speaker_reference_path)
 
         # Create output filename (replace .mp3 with .json)
         output_filename = mp3_file.stem + ".json"
         output_path = output_dir / output_filename
 
-        # Save the processed transcript as JSON
+        # Save the raw transcript as JSON
         with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(messages, f, indent=4, ensure_ascii=False)
+            json.dump(
+                [s.model_dump() for s in segments], f, indent=4, ensure_ascii=False
+            )
 
-        return (mp3_file, len(messages), None)
+        return (mp3_file, len(segments), None)
 
     except Exception as e:
         return (mp3_file, None, str(e))
