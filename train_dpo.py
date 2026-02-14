@@ -22,7 +22,7 @@ Usage:
         [--beta 0.1] \
         [--gradient-accumulation-steps 4] \
         [--logging-steps 0.1] \
-        [--eval-steps 0.5]
+        [--eval-steps 0.1]
 """
 
 import json
