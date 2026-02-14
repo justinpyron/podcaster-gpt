@@ -11,10 +11,12 @@ Logs are sent to Weights & Biases.
 Usage:
     modal run train_dpo.py \
         --model-path <path-in-volume> \
-        --adapter-path <path-in-volume> \
         --data-path-train <path-in-volume> \
         --data-path-val <path-in-volume> \
         --name <run-name> \
+        [--adapter-path <path-in-volume>] \
+        [--lora-r 16] \
+        [--lora-alpha 32] \
         [--learning-rate 5e-5] \
         [--num-epochs 1] \
         [--batch-size 4] \
@@ -28,6 +30,7 @@ Usage:
 
 import json
 from pathlib import Path
+from typing import Optional
 
 import modal
 
@@ -105,10 +108,12 @@ def load_dpo_dataset(path: str):
 )
 def train(
     model_path: str,
-    adapter_path: str,
     data_path_train: str,
     data_path_val: str,
     name: str,
+    adapter_path: Optional[str],
+    lora_r: int,
+    lora_alpha: int,
     learning_rate: float,
     num_epochs: int,
     batch_size: int,
@@ -119,11 +124,11 @@ def train(
     logging_steps: float,
     eval_steps: float,
 ):
-    """Run DPO training with LoRA Option 3 on a frozen base model + SFT adapter."""
+    """Run DPO training with LoRA. Handles both fresh adapters and existing SFT adapters."""
     import os
     from datetime import datetime, timezone
 
-    from peft import PeftModel
+    from peft import LoraConfig, PeftModel
     from transformers import AutoModelForCausalLM, AutoTokenizer
     from trl import DPOConfig, DPOTrainer
 
@@ -146,24 +151,44 @@ def train(
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    # Model — load base then attach the SFT adapter twice (Option 3)
+    # Model and Adapter Setup
     model = AutoModelForCausalLM.from_pretrained(model_path_full)
-    adapter_path_full = f"{VOLUME_MOUNT_PATH}/{adapter_path}"
-    model = PeftModel.from_pretrained(
-        model,
-        adapter_path_full,
-        is_trainable=True,
-        adapter_name="train",
-    )
-    model.load_adapter(adapter_path_full, adapter_name="reference")
+    peft_config = None
+    model_adapter_name = None
+    ref_adapter_name = None
+
+    if adapter_path:
+        # Case A: Load an existing SFT adapter twice (Option 3)
+        print(f"Loading existing SFT adapter from: {adapter_path}")
+        adapter_path_full = f"{VOLUME_MOUNT_PATH}/{adapter_path}"
+        model = PeftModel.from_pretrained(
+            model,
+            adapter_path_full,
+            is_trainable=True,
+            adapter_name="train",
+        )
+        model.load_adapter(adapter_path_full, adapter_name="reference")
+        model_adapter_name = "train"
+        ref_adapter_name = "reference"
+    else:
+        # Case B: Create a fresh LoRA adapter
+        print(f"Creating a fresh LoRA adapter (r={lora_r}, alpha={lora_alpha})")
+        peft_config = LoraConfig(
+            r=lora_r,
+            lora_alpha=lora_alpha,
+            target_modules="all-linear",
+            lora_dropout=0.05,
+            bias="none",
+            task_type="CAUSAL_LM",
+        )
 
     # Training config
     config_training = DPOConfig(
         output_dir=output_dir_full,
         run_name=run_name,
-        # LoRA Option 3
-        model_adapter_name="train",
-        ref_adapter_name="reference",
+        # Adapter naming (only needed if we manually loaded them)
+        model_adapter_name=model_adapter_name,
+        ref_adapter_name=ref_adapter_name,
         # Hyperparameters
         beta=beta,
         learning_rate=learning_rate,
@@ -193,6 +218,7 @@ def train(
         train_dataset=dataset_train,
         eval_dataset=dataset_val,
         processing_class=tokenizer,
+        peft_config=peft_config,
     )
     trainer.train()
     trainer.save_model(output_dir_full)
@@ -207,10 +233,12 @@ def train(
 @app.local_entrypoint()
 def main(
     model_path: str,
-    adapter_path: str,
     data_path_train: str,
     data_path_val: str,
     name: str,
+    adapter_path: Optional[str] = None,
+    lora_r: int = 16,
+    lora_alpha: int = 32,
     learning_rate: float = 5e-5,
     num_epochs: int = 1,
     batch_size: int = 4,
@@ -225,7 +253,10 @@ def main(
     print("=" * 80)
     print("Launching DPO training job on Modal...")
     print(f"  Base model: {model_path}")
-    print(f"  SFT adapter: {adapter_path}")
+    if adapter_path:
+        print(f"  Existing adapter (SFT): {adapter_path}")
+    else:
+        print(f"  Creating fresh LoRA adapter: r={lora_r}, alpha={lora_alpha}")
     print(f"  Train data: {data_path_train}")
     print(f"  Val data: {data_path_val}")
     print(f"  Run name: {name}")
@@ -237,10 +268,12 @@ def main(
 
     train.remote(
         model_path=model_path,
-        adapter_path=adapter_path,
         data_path_train=data_path_train,
         data_path_val=data_path_val,
         name=name,
+        adapter_path=adapter_path,
+        lora_r=lora_r,
+        lora_alpha=lora_alpha,
         learning_rate=learning_rate,
         num_epochs=num_epochs,
         batch_size=batch_size,
