@@ -104,12 +104,7 @@ def process_all_files(
         min_words: Minimum words for chosen completion.
         max_workers: Maximum parallel workers.
     """
-    # Get API key
-    api_key = os.getenv("TOGETHER_API_KEY")
-    if not api_key:
-        raise ValueError("TOGETHER_API_KEY environment variable is not set")
-
-    client = Together(api_key=api_key)
+    client = Together()
     output_dir.mkdir(parents=True, exist_ok=True)
 
     json_files = sorted(input_dir.glob("*.json"))
