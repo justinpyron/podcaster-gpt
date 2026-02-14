@@ -12,6 +12,7 @@ This is step 5 in the pipeline:
 import argparse
 import json
 import os
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -58,7 +59,8 @@ def process_single_example(
     sft_example: SFTExample,
     model_id: str,
     min_words: int,
-) -> DPOExample | None:
+    output_filename: str,
+) -> tuple[DPOExample | None, str]:
     """
     Process a single SFT example into a DPO example if it meets criteria.
 
@@ -67,27 +69,29 @@ def process_single_example(
         sft_example: The SFT example to process.
         model_id: Model ID to use for generation.
         min_words: Minimum word count for the chosen completion.
+        output_filename: Name of the file this example belongs to.
 
     Returns:
-        DPOExample if processed, None if filtered out.
+        Tuple of (DPOExample or None, output_filename).
     """
     # Filter by word count of the chosen completion
     chosen_content = sft_example.completion[0].content
     word_count = len(chosen_content.split())
 
     if word_count < min_words:
-        return None
+        return None, output_filename
 
     # Generate rejected completion
     rejected_message = generate_rejected_completion(
         client, sft_example.prompt, model_id
     )
 
-    return DPOExample(
+    dpo_ex = DPOExample(
         prompt=sft_example.prompt,
         chosen=sft_example.completion,
         rejected=[rejected_message],
     )
+    return dpo_ex, output_filename
 
 
 def process_all_files(
@@ -117,59 +121,94 @@ def process_all_files(
         return
 
     print(f"Found {len(json_files)} JSON file(s) to process")
-    print(f"Using model ID: {model_id}")
-    print(f"Filtering examples with < {min_words} words")
-    print(f"Using {max_workers} workers\n")
 
-    successful_files = 0
-    failed_files = 0
-    total_dpo_examples = 0
-
+    # Step 1: Collect all work items from all files
+    all_work_items = []
     for json_file in json_files:
         try:
             with open(json_file, "r", encoding="utf-8") as f:
                 raw_data = json.load(f)
-
             sft_examples = [SFTExample.model_validate(ex) for ex in raw_data]
-            dpo_examples = []
-
-            # Process examples in parallel for each file
-            with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                future_to_ex = {
-                    executor.submit(
-                        process_single_example, client, ex, model_id, min_words
-                    ): ex
-                    for ex in sft_examples
-                }
-
-                for future in as_completed(future_to_ex):
-                    result = future.result()
-                    if result:
-                        dpo_examples.append(result)
-
-            if dpo_examples:
-                output_path = output_dir / json_file.name
-                with open(output_path, "w", encoding="utf-8") as f:
-                    json.dump(
-                        [ex.model_dump() for ex in dpo_examples],
-                        f,
-                        indent=4,
-                        ensure_ascii=False,
-                    )
-                total_dpo_examples += len(dpo_examples)
-                print(f"✓ {json_file.name} ({len(dpo_examples)} DPO examples)")
-            else:
-                print(f"! {json_file.name} (0 examples after filtering)")
-
-            successful_files += 1
-
+            for ex in sft_examples:
+                all_work_items.append((ex, json_file.name))
         except Exception as e:
-            failed_files += 1
-            print(f"❌ {json_file.name}: {e}")
+            print(f"❌ Error loading {json_file.name}: {e}")
+
+    if not all_work_items:
+        print("No examples found to process.")
+        return
+
+    print(f"Collected {len(all_work_items)} total examples to process")
+    print(f"Using model ID: {model_id}")
+    print(f"Filtering examples with < {min_words} words")
+    print(f"Using {max_workers} workers\n")
+
+    # Step 2: Process all examples in parallel across a single thread pool
+    results_by_file = defaultdict(list)
+    total_processed = 0
+    total_filtered = 0
+    total_failed = 0
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_info = {
+            executor.submit(
+                process_single_example, client, ex, model_id, min_words, fname
+            ): (ex, fname)
+            for ex, fname in all_work_items
+        }
+
+        for future in as_completed(future_to_info):
+            _, original_fname = future_to_info[future]
+            try:
+                dpo_ex, res_fname = future.result()
+                if dpo_ex:
+                    results_by_file[res_fname].append(dpo_ex)
+                else:
+                    total_filtered += 1
+            except Exception as e:
+                total_failed += 1
+                print(f"❌ Error processing example from {original_fname}: {e}")
+
+            total_processed += 1
+            if total_processed % 10 == 0 or total_processed == len(all_work_items):
+                print(
+                    f"\rProgress: {total_processed}/{len(all_work_items)} examples processed "
+                    f"({total_filtered} filtered, {total_failed} failed)...",
+                    end="",
+                    flush=True,
+                )
+
+    print("\n\nWriting output files...")
+
+    # Step 3: Write results back to their respective files
+    successful_files = 0
+    total_dpo_examples = 0
+
+    for fname in sorted(results_by_file.keys()):
+        examples = results_by_file[fname]
+        if not examples:
+            continue
+
+        try:
+            output_path = output_dir / fname
+            with open(output_path, "w", encoding="utf-8") as f:
+                json.dump(
+                    [ex.model_dump() for ex in examples],
+                    f,
+                    indent=4,
+                    ensure_ascii=False,
+                )
+            total_dpo_examples += len(examples)
+            successful_files += 1
+        except Exception as e:
+            print(f"❌ Error writing {fname}: {e}")
 
     print(f"\n{'='*60}")
     print(f"Processing complete!")
-    print(f"  Files: {successful_files} successful, {failed_files} failed")
+    print(
+        f"  Examples: {total_processed} total, {total_filtered} filtered, {total_failed} failed"
+    )
+    print(f"  Files: {successful_files} output files created")
     print(f"  Total DPO examples: {total_dpo_examples}")
     print(f"{'='*60}")
 
