@@ -24,6 +24,7 @@ def create_finetune_examples(
 
     For each assistant message, creates an SFTExample where prompt is all
     preceding messages and completion is the assistant message.
+    Ensures that the prompt for every example starts with a user message.
 
     Args:
         messages: List of Message objects.
@@ -31,6 +32,16 @@ def create_finetune_examples(
     Returns:
         List of SFTExample objects.
     """
+    # Find the index of the first user message
+    start_idx = next((i for i, m in enumerate(messages) if m.role == "user"), None)
+
+    # If no user message exists, we cannot create valid examples
+    if start_idx is None:
+        return []
+
+    # Slice the messages to start from the first user message
+    messages = messages[start_idx:]
+
     return [
         SFTExample(prompt=messages[:i], completion=[m])
         for i, m in enumerate(messages)
