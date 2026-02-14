@@ -69,7 +69,7 @@ volume = modal.Volume.from_name(VOLUME_NAME)
 
 
 def load_dpo_dataset(path: str):
-    """Load DPO examples from a directory of JSON files into a HuggingFace Dataset.
+    """Load DPO examples from a path (file or directory) into a HuggingFace Dataset.
 
     Each JSON file contains a list of DPOExamples with keys:
     "prompt", "chosen", "rejected" — each being a list of message dicts.
@@ -77,7 +77,13 @@ def load_dpo_dataset(path: str):
     from datasets import Dataset
 
     all_examples = []
-    for filepath in sorted(Path(path).glob("*.json")):
+    p = Path(path)
+    if p.is_file():
+        files = [p]
+    else:
+        files = sorted(list(p.glob("*.json")))
+
+    for filepath in files:
         with open(filepath, "r") as f:
             all_examples.extend(json.load(f))
 
