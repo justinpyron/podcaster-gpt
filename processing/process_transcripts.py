@@ -10,7 +10,7 @@ import argparse
 import json
 from pathlib import Path
 
-from models import (
+from transcript_types import (
     ProcessedTranscript,
     ProcessedTranscriptMessage,
     RawTranscript,

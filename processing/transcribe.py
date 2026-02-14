@@ -13,8 +13,8 @@ import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-from models import RawTranscript, RawTranscriptSegment
 from openai import OpenAI
+from transcript_types import RawTranscript, RawTranscriptSegment
 
 
 def to_data_url(path: Path) -> str:
