@@ -66,7 +66,7 @@ def create_finetune_examples(
     messages = messages[start_idx:]
 
     # Create the initial set of SFTExample objects
-    all_examples = [
+    examples = [
         SFTExample(prompt=messages[:i], completion=[m])
         for i, m in enumerate(messages)
         if m.role == "assistant" and i > 0
@@ -74,7 +74,7 @@ def create_finetune_examples(
 
     # Filter the examples
     filtered_examples = [
-        ex for ex in all_examples if filter_messages(ex, min_words) is not None
+        ex for ex in examples if filter_messages(ex, min_words) is not None
     ]
 
     return filtered_examples
