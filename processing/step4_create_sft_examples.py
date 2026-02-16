@@ -18,30 +18,30 @@ from data_types import Message, SFTExample
 
 def filter_messages(
     example: SFTExample,
-    min_completion_words: int,
-    min_avg_prompt_words: float,
+    min_words_completion: int,
+    min_words_prompt: float,
 ) -> SFTExample | None:
     """
     Filter an SFT example based on criteria like word count.
 
     Args:
         example: The SFTExample to check.
-        min_completion_words: Minimum word count for the completion.
-        min_avg_prompt_words: Minimum average word count for prompt messages.
+        min_words_completion: Minimum word count for the completion.
+        min_words_prompt: Minimum average word count for prompt messages.
 
     Returns:
         The example if it passes filtering, otherwise None.
     """
     # 1. Check completion word count
     completion_content = example.completion[0].content
-    if len(completion_content.split()) < min_completion_words:
+    if len(completion_content.split()) < min_words_completion:
         return None
 
     # 2. Check average prompt word count
     prompt_word_counts = [len(m.content.split()) for m in example.prompt]
     avg_prompt_words = sum(prompt_word_counts) / len(prompt_word_counts)
 
-    if avg_prompt_words < min_avg_prompt_words:
+    if avg_prompt_words < min_words_prompt:
         return None
 
     return example
@@ -49,8 +49,8 @@ def filter_messages(
 
 def create_finetune_examples(
     messages: list[Message],
-    min_completion_words: int = 5,
-    min_avg_prompt_words: float = 0.0,
+    min_words_completion: int = 5,
+    min_words_prompt: float = 0.0,
 ) -> list[SFTExample]:
     """
     Transform a conversation into training examples for fine-tuning an LLM.
@@ -61,8 +61,8 @@ def create_finetune_examples(
 
     Args:
         messages: List of Message objects.
-        min_completion_words: Minimum words for completion.
-        min_avg_prompt_words: Minimum average words for prompt messages.
+        min_words_completion: Minimum words for completion.
+        min_words_prompt: Minimum average words for prompt messages.
 
     Returns:
         List of SFTExample objects.
@@ -84,7 +84,7 @@ def create_finetune_examples(
     filtered_examples = [
         ex
         for ex in examples
-        if filter_messages(ex, min_completion_words, min_avg_prompt_words) is not None
+        if filter_messages(ex, min_words_completion, min_words_prompt) is not None
     ]
 
     return filtered_examples
@@ -93,8 +93,8 @@ def create_finetune_examples(
 def process_all_files(
     input_dir: Path,
     output_dir: Path,
-    min_completion_words: int = 5,
-    min_avg_prompt_words: float = 0.0,
+    min_words_completion: int = 5,
+    min_words_prompt: float = 0.0,
 ) -> None:
     """
     Process all JSON transcript files and save SFT examples.
@@ -102,8 +102,8 @@ def process_all_files(
     Args:
         input_dir: Directory containing processed transcript JSON files.
         output_dir: Directory where SFT example JSON files will be saved.
-        min_completion_words: Minimum words for completion.
-        min_avg_prompt_words: Minimum average words for prompt messages.
+        min_words_completion: Minimum words for completion.
+        min_words_prompt: Minimum average words for prompt messages.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -114,8 +114,8 @@ def process_all_files(
         return
 
     print(f"Found {len(json_files)} JSON file(s) to process")
-    print(f"Filtering completion < {min_completion_words} words")
-    print(f"Filtering avg prompt < {min_avg_prompt_words} words\n")
+    print(f"Filtering completion < {min_words_completion} words")
+    print(f"Filtering avg prompt < {min_words_prompt} words\n")
 
     successful = 0
     failed = 0
@@ -129,8 +129,8 @@ def process_all_files(
             messages = [Message.model_validate(m) for m in raw_data]
             examples = create_finetune_examples(
                 messages,
-                min_completion_words=min_completion_words,
-                min_avg_prompt_words=min_avg_prompt_words,
+                min_words_completion=min_words_completion,
+                min_words_prompt=min_words_prompt,
             )
 
             output_path = output_dir / json_file.name
@@ -180,16 +180,16 @@ def main():
     )
 
     parser.add_argument(
-        "-w",
-        "--min-completion-words",
+        "-wc",
+        "--min-words-completion",
         type=int,
         default=5,
         help="Minimum word count for the completion (default: 5)",
     )
 
     parser.add_argument(
-        "-p",
-        "--min-avg-prompt-words",
+        "-wp",
+        "--min-words-prompt",
         type=float,
         default=0.0,
         help="Minimum average word count for prompt messages (default: 0.0)",
@@ -206,8 +206,8 @@ def main():
     process_all_files(
         input_dir=args.input_dir,
         output_dir=args.output_dir,
-        min_completion_words=args.min_completion_words,
-        min_avg_prompt_words=args.min_avg_prompt_words,
+        min_words_completion=args.min_words_completion,
+        min_words_prompt=args.min_words_prompt,
     )
 
 
