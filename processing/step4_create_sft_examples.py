@@ -191,8 +191,8 @@ def main():
         "-wp",
         "--min-words-prompt",
         type=float,
-        default=0.0,
-        help="Minimum average word count for prompt messages (default: 0.0)",
+        default=5.0,
+        help="Minimum average word count for prompt messages (default: 5.0)",
     )
 
     args = parser.parse_args()
