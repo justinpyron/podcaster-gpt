@@ -67,14 +67,10 @@ def create_finetune_examples(
     Returns:
         List of SFTExample objects.
     """
-    # Find the index of the first user message
+    # Ensure conversation starts with a user message
     start_idx = next((i for i, m in enumerate(messages) if m.role == "user"), None)
-
-    # If no user message exists, we cannot create valid examples
     if start_idx is None:
         return []
-
-    # Slice the messages to start from the first user message
     messages = messages[start_idx:]
 
     # Create the initial set of SFTExample objects
