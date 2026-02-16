@@ -135,17 +135,20 @@ def process_all_files(
             )
 
             output_path = output_dir / json_file.name
-            with open(output_path, "w", encoding="utf-8") as f:
-                json.dump(
-                    [e.model_dump() for e in examples],
-                    f,
-                    indent=4,
-                    ensure_ascii=False,
-                )
-
-            successful += 1
-            total_examples += len(examples)
-            print(f"✓ {json_file.name} ({len(examples)} examples)")
+            if examples:
+                with open(output_path, "w", encoding="utf-8") as f:
+                    json.dump(
+                        [e.model_dump() for e in examples],
+                        f,
+                        indent=4,
+                        ensure_ascii=False,
+                    )
+                successful += 1
+                total_examples += len(examples)
+                print(f"✓ {json_file.name} ({len(examples)} examples)")
+            else:
+                print(f"○ {json_file.name} (0 examples - skipping output)")
+                successful += 1
 
         except Exception as e:
             failed += 1
