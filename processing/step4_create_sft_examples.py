@@ -13,11 +13,45 @@ import argparse
 import json
 from pathlib import Path
 
+import numpy as np
 from data_types import Message, SFTExample
+
+
+def filter_messages(
+    example: SFTExample,
+    min_words_completion: int,
+    min_words_prompt: float,
+) -> SFTExample | None:
+    """
+    Filter an SFT example based on criteria like word count.
+
+    Args:
+        example: The SFTExample to check.
+        min_words_completion: Minimum word count for the completion.
+        min_words_prompt: Minimum median word count for prompt messages.
+
+    Returns:
+        The example if it passes filtering, otherwise None.
+    """
+    # 1. Check completion word count
+    completion_content = example.completion[0].content
+    if len(completion_content.split()) < min_words_completion:
+        return None
+
+    # 2. Check median prompt word count
+    prompt_word_counts = [len(m.content.split()) for m in example.prompt]
+    median_prompt_words = np.median(prompt_word_counts)
+
+    if median_prompt_words < min_words_prompt:
+        return None
+
+    return example
 
 
 def create_finetune_examples(
     messages: list[Message],
+    min_words_completion: int = 5,
+    min_words_prompt: float = 5.0,
 ) -> list[SFTExample]:
     """
     Transform a conversation into training examples for fine-tuning an LLM.
@@ -28,34 +62,49 @@ def create_finetune_examples(
 
     Args:
         messages: List of Message objects.
+        min_words_completion: Minimum words for completion.
+        min_words_prompt: Minimum median words for prompt messages.
 
     Returns:
         List of SFTExample objects.
     """
-    # Find the index of the first user message
+    # Ensure conversation starts with a user message
     start_idx = next((i for i, m in enumerate(messages) if m.role == "user"), None)
-
-    # If no user message exists, we cannot create valid examples
     if start_idx is None:
         return []
-
-    # Slice the messages to start from the first user message
     messages = messages[start_idx:]
 
-    return [
+    # Create the initial set of SFTExample objects
+    examples = [
         SFTExample(prompt=messages[:i], completion=[m])
         for i, m in enumerate(messages)
         if m.role == "assistant" and i > 0
     ]
 
+    # Filter the examples
+    filtered_examples = [
+        ex
+        for ex in examples
+        if filter_messages(ex, min_words_completion, min_words_prompt) is not None
+    ]
 
-def process_all_files(input_dir: Path, output_dir: Path) -> None:
+    return filtered_examples
+
+
+def process_all_files(
+    input_dir: Path,
+    output_dir: Path,
+    min_words_completion: int = 5,
+    min_words_prompt: float = 5.0,
+) -> None:
     """
     Process all JSON transcript files and save SFT examples.
 
     Args:
         input_dir: Directory containing processed transcript JSON files.
         output_dir: Directory where SFT example JSON files will be saved.
+        min_words_completion: Minimum words for completion.
+        min_words_prompt: Minimum median words for prompt messages.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -65,7 +114,9 @@ def process_all_files(input_dir: Path, output_dir: Path) -> None:
         print(f"No JSON files found in {input_dir}")
         return
 
-    print(f"Found {len(json_files)} JSON file(s) to process\n")
+    print(f"Found {len(json_files)} JSON file(s) to process")
+    print(f"Filtering completion < {min_words_completion} words")
+    print(f"Filtering median prompt < {min_words_prompt} words\n")
 
     successful = 0
     failed = 0
@@ -77,7 +128,11 @@ def process_all_files(input_dir: Path, output_dir: Path) -> None:
                 raw_data = json.load(f)
 
             messages = [Message.model_validate(m) for m in raw_data]
-            examples = create_finetune_examples(messages)
+            examples = create_finetune_examples(
+                messages,
+                min_words_completion=min_words_completion,
+                min_words_prompt=min_words_prompt,
+            )
 
             output_path = output_dir / json_file.name
             with open(output_path, "w", encoding="utf-8") as f:
@@ -125,6 +180,22 @@ def main():
         help="Directory where SFT example JSON files will be saved",
     )
 
+    parser.add_argument(
+        "-wc",
+        "--min-words-completion",
+        type=int,
+        default=5,
+        help="Minimum word count for the completion (default: 5)",
+    )
+
+    parser.add_argument(
+        "-wp",
+        "--min-words-prompt",
+        type=float,
+        default=5.0,
+        help="Minimum median word count for prompt messages (default: 5.0)",
+    )
+
     args = parser.parse_args()
 
     if not args.input_dir.exists():
@@ -136,6 +207,8 @@ def main():
     process_all_files(
         input_dir=args.input_dir,
         output_dir=args.output_dir,
+        min_words_completion=args.min_words_completion,
+        min_words_prompt=args.min_words_prompt,
     )
 
 

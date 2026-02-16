@@ -21,7 +21,7 @@ This folder contains the scripts for the 5-step data processing pipeline used to
     *   **Output Folder:** `data/transcripts_processed/` (Formatted messages)
 
 4.  **`step4_create_sft_examples.py`**
-    Converts processed conversations into Supervised Fine-Tuning (SFT) examples.
+    Converts processed conversations into Supervised Fine-Tuning (SFT) examples. Includes filtering logic to ensure data quality (e.g., minimum word counts for completions and median word counts for prompts).
     *   **Input Folder:** `data/transcripts_processed/` (Formatted messages)
     *   **Output Folder:** `data/examples_sft/` (SFT examples JSON)
 
@@ -68,7 +68,9 @@ uv run processing/step3_process_transcripts.py \
 # 4. Create SFT examples
 uv run processing/step4_create_sft_examples.py \
     -i data/transcripts_processed/rogan \
-    -o data/examples_sft/rogan
+    -o data/examples_sft/rogan \
+    -wc 10 \
+    -wp 5.0
 
 # 5. Generate DPO examples (requires Together AI API key)
 uv run processing/step5_create_dpo_examples.py \
