@@ -13,6 +13,7 @@ import argparse
 import json
 from pathlib import Path
 
+import numpy as np
 from data_types import Message, SFTExample
 
 
@@ -27,7 +28,7 @@ def filter_messages(
     Args:
         example: The SFTExample to check.
         min_words_completion: Minimum word count for the completion.
-        min_words_prompt: Minimum average word count for prompt messages.
+        min_words_prompt: Minimum median word count for prompt messages.
 
     Returns:
         The example if it passes filtering, otherwise None.
@@ -37,11 +38,11 @@ def filter_messages(
     if len(completion_content.split()) < min_words_completion:
         return None
 
-    # 2. Check average prompt word count
+    # 2. Check median prompt word count
     prompt_word_counts = [len(m.content.split()) for m in example.prompt]
-    avg_prompt_words = sum(prompt_word_counts) / len(prompt_word_counts)
+    median_prompt_words = np.median(prompt_word_counts)
 
-    if avg_prompt_words < min_words_prompt:
+    if median_prompt_words < min_words_prompt:
         return None
 
     return example
@@ -50,7 +51,7 @@ def filter_messages(
 def create_finetune_examples(
     messages: list[Message],
     min_words_completion: int = 5,
-    min_words_prompt: float = 0.0,
+    min_words_prompt: float = 5.0,
 ) -> list[SFTExample]:
     """
     Transform a conversation into training examples for fine-tuning an LLM.
@@ -62,7 +63,7 @@ def create_finetune_examples(
     Args:
         messages: List of Message objects.
         min_words_completion: Minimum words for completion.
-        min_words_prompt: Minimum average words for prompt messages.
+        min_words_prompt: Minimum median words for prompt messages.
 
     Returns:
         List of SFTExample objects.
@@ -94,7 +95,7 @@ def process_all_files(
     input_dir: Path,
     output_dir: Path,
     min_words_completion: int = 5,
-    min_words_prompt: float = 0.0,
+    min_words_prompt: float = 5.0,
 ) -> None:
     """
     Process all JSON transcript files and save SFT examples.
@@ -103,7 +104,7 @@ def process_all_files(
         input_dir: Directory containing processed transcript JSON files.
         output_dir: Directory where SFT example JSON files will be saved.
         min_words_completion: Minimum words for completion.
-        min_words_prompt: Minimum average words for prompt messages.
+        min_words_prompt: Minimum median words for prompt messages.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -115,7 +116,7 @@ def process_all_files(
 
     print(f"Found {len(json_files)} JSON file(s) to process")
     print(f"Filtering completion < {min_words_completion} words")
-    print(f"Filtering avg prompt < {min_words_prompt} words\n")
+    print(f"Filtering median prompt < {min_words_prompt} words\n")
 
     successful = 0
     failed = 0
@@ -192,7 +193,7 @@ def main():
         "--min-words-prompt",
         type=float,
         default=5.0,
-        help="Minimum average word count for prompt messages (default: 5.0)",
+        help="Minimum median word count for prompt messages (default: 5.0)",
     )
 
     args = parser.parse_args()
