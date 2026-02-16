@@ -58,29 +58,20 @@ def process_single_example(
     client: Together,
     sft_example: SFTExample,
     model_id: str,
-    min_words: int,
     output_filename: str,
 ) -> tuple[DPOExample | None, str]:
     """
-    Process a single SFT example into a DPO example if it meets criteria.
+    Process a single SFT example into a DPO example.
 
     Args:
         client: Together AI client.
         sft_example: The SFT example to process.
         model_id: Model ID to use for generation.
-        min_words: Minimum word count for the chosen completion.
         output_filename: Name of the file this example belongs to.
 
     Returns:
         Tuple of (DPOExample or None, output_filename).
     """
-    # Filter by word count of the chosen completion
-    chosen_content = sft_example.completion[0].content
-    word_count = len(chosen_content.split())
-
-    if word_count < min_words:
-        return None, output_filename
-
     # Generate rejected completion
     rejected_message = generate_rejected_completion(
         client, sft_example.prompt, model_id
@@ -98,7 +89,6 @@ def process_all_files(
     input_dir: Path,
     output_dir: Path,
     model_id: str,
-    min_words: int,
     max_workers: int,
 ) -> None:
     """
@@ -108,7 +98,6 @@ def process_all_files(
         input_dir: Directory containing SFT example JSON files.
         output_dir: Directory where DPO example JSON files will be saved.
         model_id: Together AI model ID to use.
-        min_words: Minimum words for chosen completion.
         max_workers: Maximum parallel workers.
     """
     client = Together()
@@ -140,20 +129,19 @@ def process_all_files(
 
     print(f"Collected {len(all_work_items)} total examples to process")
     print(f"Using model ID: {model_id}")
-    print(f"Filtering examples with < {min_words} words")
     print(f"Using {max_workers} workers\n")
 
     # Step 2: Process all examples in parallel across a single thread pool
     results_by_file = defaultdict(list)
     total_processed = 0
-    total_filtered = 0
     total_failed = 0
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_info = {
-            executor.submit(
-                process_single_example, client, ex, model_id, min_words, fname
-            ): (ex, fname)
+            executor.submit(process_single_example, client, ex, model_id, fname): (
+                ex,
+                fname,
+            )
             for ex, fname in all_work_items
         }
 
@@ -163,8 +151,6 @@ def process_all_files(
                 dpo_ex, res_fname = future.result()
                 if dpo_ex:
                     results_by_file[res_fname].append(dpo_ex)
-                else:
-                    total_filtered += 1
             except Exception as e:
                 total_failed += 1
                 print(f"❌ Error processing example from {original_fname}: {e}")
@@ -173,7 +159,7 @@ def process_all_files(
             if total_processed % 10 == 0 or total_processed == len(all_work_items):
                 print(
                     f"\rProgress: {total_processed}/{len(all_work_items)} examples processed "
-                    f"({total_filtered} filtered, {total_failed} failed)...",
+                    f"({total_failed} failed)...",
                     end="",
                     flush=True,
                 )
@@ -205,9 +191,7 @@ def process_all_files(
 
     print(f"\n{'='*60}")
     print(f"Processing complete!")
-    print(
-        f"  Examples: {total_processed} total, {total_filtered} filtered, {total_failed} failed"
-    )
+    print(f"  Examples: {total_processed} total, {total_failed} failed")
     print(f"  Files: {successful_files} output files created")
     print(f"  Total DPO examples: {total_dpo_examples}")
     print(f"{'='*60}")
@@ -244,14 +228,6 @@ def main():
     )
 
     parser.add_argument(
-        "-w",
-        "--min-words",
-        type=int,
-        default=5,
-        help="Minimum word count for the chosen completion (default: 5)",
-    )
-
-    parser.add_argument(
         "-t",
         "--workers",
         type=int,
@@ -271,7 +247,6 @@ def main():
         input_dir=args.input_dir,
         output_dir=args.output_dir,
         model_id=args.model_id,
-        min_words=args.min_words,
         max_workers=args.workers,
     )
 
