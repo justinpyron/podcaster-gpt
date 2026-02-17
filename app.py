@@ -8,7 +8,8 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStream
 
 # --- Configuration & Paths ---
 PATH_WEIGHTS_BASE = "/Users/justinpyron/.cache/huggingface/hub/models--google--gemma-3-270m-it/snapshots/ac82b4e820549b854eebf28ce6dedaf9fdfa17b3"
-PATH_WEIGHTS_ADAPTER = "/Users/justinpyron/code/podcaster-gpt/weights_dpo/rogan-medium-words6_20260216T224542Z"
+# PATH_WEIGHTS_ADAPTER = "/Users/justinpyron/code/podcaster-gpt/weights_dpo/rogan-medium-words6_20260216T224542Z"
+PATH_WEIGHTS_ADAPTER = "/Users/justinpyron/code/podcaster-gpt/weights_sft/rogan-medium-words6_20260217T030211Z"
 
 # --- App Setup ---
 st.set_page_config(page_title="Podcaster GPT", page_icon="🎙️", layout="centered")
