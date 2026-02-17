@@ -19,36 +19,26 @@ st.markdown("Fine-tuned Gemma-3 for simulating podcasters.")
 # --- Model Loading (Cached) ---
 @st.cache_resource
 def load_model_and_tokenizer():
+
     # Load tokenizer
     tokenizer = AutoTokenizer.from_pretrained(PATH_WEIGHTS_BASE)
 
-    # Device setup
-    if torch.cuda.is_available():
-        device = "cuda"
-    elif torch.backends.mps.is_available():
-        device = "mps"
-    else:
-        device = "cpu"
-
     # Load base model
-    base_model = AutoModelForCausalLM.from_pretrained(
-        PATH_WEIGHTS_BASE,
-        torch_dtype=torch.float16 if device != "cpu" else torch.float32,
-        device_map="auto" if device != "cpu" else None,
-    )
+    base_model = AutoModelForCausalLM.from_pretrained(PATH_WEIGHTS_BASE)
     base_model.eval()
 
-    # Load adapter
+    # Load first adapter
     model = PeftModel.from_pretrained(
         base_model,
         PATH_WEIGHTS_ADAPTER,
-        adapter_name="rogan",
+        adapter_name="rogan-medium-words6",
     )
+    model.eval()
 
-    return model, tokenizer, device
+    return model, tokenizer
 
 
-model, tokenizer, device = load_model_and_tokenizer()
+model, tokenizer = load_model_and_tokenizer()
 
 # --- Controls ---
 # Keep it simple: just a temperature slider in the main view
@@ -92,12 +82,6 @@ if prompt := st.chat_input("What is up?"):
             return_dict=True,
         )
 
-        # Safely move inputs to device
-        if isinstance(inputs, dict):
-            inputs = {k: v.to(device) for k, v in inputs.items()}
-        else:
-            inputs = inputs.to(device)
-
         # Set up streamer
         streamer = TextIteratorStreamer(
             tokenizer, skip_prompt=True, skip_special_tokens=True
@@ -110,6 +94,8 @@ if prompt := st.chat_input("What is up?"):
             max_new_tokens=256,
             do_sample=True,
             temperature=temperature,
+            # top_p=0.9,  # Stabilize generation by filtering low-prob tokens
+            # top_k=50,   # Stabilize generation by filtering the tail
             pad_token_id=tokenizer.pad_token_id,
         )
 
