@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "streamlit>=1.19.0",
     "tokenizers>=0.22.2",
     "torch>=2.10.0",
     "transformers>=5.1.0",
