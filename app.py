@@ -6,72 +6,19 @@ import torch
 from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
 
-# App Title & Layout
+# --- Configuration & Paths ---
+PATH_WEIGHTS_BASE = "/Users/justinpyron/.cache/huggingface/hub/models--google--gemma-3-270m-it/snapshots/ac82b4e820549b854eebf28ce6dedaf9fdfa17b3"
+PATH_WEIGHTS_ADAPTER = "/Users/justinpyron/code/podcaster-gpt/weights_dpo/rogan-medium-words6_20260216T224542Z"
+
+# --- App Setup ---
 st.set_page_config(page_title="Podcaster GPT", page_icon="🎙️", layout="centered")
 
-# Custom Styling
-st.markdown(
-    """
-    <style>
-    .main {
-        background-color: #0e1117;
-        color: #ffffff;
-    }
-    .stChatInputContainer {
-        padding-bottom: 2rem;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
 st.title("🎙️ Podcaster GPT")
-st.markdown("Fine-tuned Gemma-3 for simulating podcasters. Ask anything!")
-
-# Constants & Paths
-PATH_WEIGHTS_BASE = "/Users/justinpyron/.cache/huggingface/hub/models--google--gemma-3-270m-it/snapshots/ac82b4e820549b854eebf28ce6dedaf9fdfa17b3"
-ADAPTER_ROOT = "/Users/justinpyron/code/podcaster-gpt/weights_dpo"
-
-# Helper to find adapters
-def get_adapters():
-    if not os.path.exists(ADAPTER_ROOT):
-        return []
-    return [
-        f
-        for f in os.listdir(ADAPTER_ROOT)
-        if os.path.isdir(os.path.join(ADAPTER_ROOT, f))
-    ]
-
-
-# --- Sidebar Configuration ---
-st.sidebar.title("Configuration")
-
-# About
-st.sidebar.info(
-    "This app uses a fine-tuned LoRA model based on Gemma-3 270m "
-    "to simulate conversation with podcasters."
-)
-
-# Adapter Selection
-available_adapters = get_adapters()
-selected_adapter_name = st.sidebar.selectbox(
-    "Select Adapter", available_adapters, index=0 if available_adapters else None
-)
-
-# Generation Params
-max_new_tokens = st.sidebar.slider("Max New Tokens", 1, 512, 128)
-temperature = st.sidebar.slider("Temperature", 0.1, 2.0, 1.0, 0.1)
-top_p = st.sidebar.slider("Top-p", 0.0, 1.0, 0.9, 0.05)
-
-if st.sidebar.button("Clear Chat History"):
-    st.session_state.messages = []
-    st.rerun()
+st.markdown("Fine-tuned Gemma-3 for simulating podcasters.")
 
 # --- Model Loading (Cached) ---
 @st.cache_resource
-def load_model_and_tokenizer(adapter_name):
-    st.info(f"Loading model with adapter: {adapter_name}...")
-
+def load_model_and_tokenizer():
     # Load tokenizer
     tokenizer = AutoTokenizer.from_pretrained(PATH_WEIGHTS_BASE)
 
@@ -84,7 +31,6 @@ def load_model_and_tokenizer(adapter_name):
         device = "cpu"
 
     # Load base model
-    # Use torch_dtype for efficiency
     base_model = AutoModelForCausalLM.from_pretrained(
         PATH_WEIGHTS_BASE,
         torch_dtype=torch.float16 if device != "cpu" else torch.float32,
@@ -93,22 +39,24 @@ def load_model_and_tokenizer(adapter_name):
     base_model.eval()
 
     # Load adapter
-    adapter_path = os.path.join(ADAPTER_ROOT, adapter_name)
     model = PeftModel.from_pretrained(
         base_model,
-        adapter_path,
-        adapter_name=adapter_name,
+        PATH_WEIGHTS_ADAPTER,
+        adapter_name="rogan",
     )
 
     return model, tokenizer, device
 
 
-# Only load if we have an adapter selected
-if selected_adapter_name:
-    model, tokenizer, device = load_model_and_tokenizer(selected_adapter_name)
-else:
-    st.error(f"No adapters found in {ADAPTER_ROOT} directory.")
-    st.stop()
+model, tokenizer, device = load_model_and_tokenizer()
+
+# --- Controls ---
+# Keep it simple: just a temperature slider in the main view
+temperature = st.slider("Temperature", 0.1, 2.0, 1.0, 0.1)
+
+if st.button("Clear Chat"):
+    st.session_state.messages = []
+    st.rerun()
 
 # --- Chat Interface ---
 
@@ -122,7 +70,7 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 # Accept user input
-if prompt := st.chat_input("What's on your mind?"):
+if prompt := st.chat_input("What is up?"):
     # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
 
@@ -159,10 +107,9 @@ if prompt := st.chat_input("What's on your mind?"):
         generation_kwargs = dict(
             **inputs,
             streamer=streamer,
-            max_new_tokens=max_new_tokens,
+            max_new_tokens=256,
             do_sample=True,
             temperature=temperature,
-            top_p=top_p,
             pad_token_id=tokenizer.pad_token_id,
         )
 
