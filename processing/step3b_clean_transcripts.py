@@ -21,6 +21,7 @@ from data_types import Message, ProcessedTranscript
 from jinja2 import Template
 from openai import OpenAI
 
+# The cleaned example here comes from file rogan_2314__00.json
 TEMPLATE = """
 You are a transcript editor. Your job is to take a raw, choppy podcast transcript and produce a clean version that reads naturally.
 
