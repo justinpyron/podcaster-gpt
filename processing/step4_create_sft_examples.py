@@ -17,6 +17,29 @@ import numpy as np
 from data_types import Message, SFTExample
 
 
+def filter_files(messages: list[Message]) -> bool:
+    """
+    Check if a list of messages alternates between 'user' and 'assistant' roles.
+
+    This ensures that the conversation structure is valid for fine-tuning,
+    with no consecutive messages from the same role.
+
+    Args:
+        messages: List of Message objects to check.
+
+    Returns:
+        True if roles alternate correctly, False otherwise.
+    """
+    if not messages:
+        return True
+
+    for i in range(1, len(messages)):
+        if messages[i].role == messages[i - 1].role:
+            return False
+
+    return True
+
+
 def filter_messages(
     example: SFTExample,
     min_words_completion: int,
@@ -73,6 +96,10 @@ def create_finetune_examples(
     if start_idx is None:
         return []
     messages = messages[start_idx:]
+
+    # Ensure roles alternate correctly
+    if not filter_files(messages):
+        return []
 
     # Create the initial set of SFTExample objects
     examples = [
