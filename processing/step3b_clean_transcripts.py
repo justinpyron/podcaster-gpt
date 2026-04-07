@@ -346,6 +346,7 @@ Given a JSON array transcript, merge consecutive or interrupted same-speaker fra
 
 ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh"]
 REASONING_EFFORTS = ("none", "minimal", "low", "medium", "high", "xhigh")
+OPENAI_API_KEY_VAR = "OPENAI_API_KEY_DEFAULT"
 
 
 def clean_transcript(
@@ -438,9 +439,9 @@ def process_all_files(
         reasoning_effort: Reasoning effort level.
         max_workers: Maximum number of parallel workers.
     """
-    api_key = os.getenv("OPENAI_API_KEY_DEFAULT")
+    api_key = os.getenv(OPENAI_API_KEY_VAR)
     if not api_key:
-        raise ValueError("OPENAI_API_KEY_DEFAULT environment variable is not set")
+        raise ValueError(f"{OPENAI_API_KEY_VAR} environment variable is not set")
 
     client = OpenAI(api_key=api_key)
     output_dir.mkdir(parents=True, exist_ok=True)
