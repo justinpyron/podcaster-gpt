@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 
-def load_examples(files: list[Path]) -> list[dict[str, Any]]:
+def load_and_flatten_examples(files: list[Path]) -> list[dict[str, Any]]:
     """Reads a list of JSON files and unpacks their contents into a single list."""
     all_examples = []
     for f in files:
@@ -101,8 +101,8 @@ def main():
     print(f"Split: {len(train_files)} train files, {len(val_files)} val files.")
 
     # Load and unpack
-    train_examples = load_examples(train_files)
-    val_examples = load_examples(val_files)
+    train_examples = load_and_flatten_examples(train_files)
+    val_examples = load_and_flatten_examples(val_files)
     print(f"Total examples: {len(train_examples)} train, {len(val_examples)} val.")
 
     # Save
