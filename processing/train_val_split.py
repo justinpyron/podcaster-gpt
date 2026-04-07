@@ -1,9 +1,8 @@
 """
-Splits a directory of DPO JSON files into training and validation sets.
+Splits a directory of JSON files into training and validation sets.
 
-This script takes a folder of JSON files (each containing a list of DPOExample dicts),
-randomly splits the *files* 90/10, and then unpacks all examples into two large
-JSON files: train.json and val.json.
+Each JSON file must contain an array of examples (dicts). Files are randomly
+split at the file level, then all examples are unpacked into train.json and val.json.
 
 Usage:
     python processing/train_val_split.py \
@@ -54,7 +53,7 @@ def split_files(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Split DPO JSON files into train and val sets."
+        description="Split JSON files into train and val sets."
     )
     parser.add_argument(
         "-i",
