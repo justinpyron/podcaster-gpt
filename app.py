@@ -1,15 +1,17 @@
-import os
 from threading import Thread
 
 import streamlit as st
-import torch
 from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
 
 # --- Configuration & Paths ---
-PATH_WEIGHTS_BASE = "/Users/justinpyron/.cache/huggingface/hub/models--google--gemma-3-270m-it/snapshots/ac82b4e820549b854eebf28ce6dedaf9fdfa17b3"
-# PATH_WEIGHTS_ADAPTER = "/Users/justinpyron/code/podcaster-gpt/weights_dpo/rogan-medium-words6_20260216T224542Z"
-PATH_WEIGHTS_ADAPTER = "/Users/justinpyron/code/podcaster-gpt/weights_sft/rogan-medium-words6_20260217T030211Z"
+# Version 270m
+# PATH_WEIGHTS_BASE = "/Users/justinpyron/.cache/huggingface/hub/models--google--gemma-3-270m-it/snapshots/ac82b4e820549b854eebf28ce6dedaf9fdfa17b3"
+# PATH_WEIGHTS_ADAPTER = "/Users/justinpyron/code/podcaster-gpt/weights_sft/rogan-llm-cleaned-words5_20260407T204518Z"
+
+# Version 1B
+PATH_WEIGHTS_BASE = "/Users/justinpyron/.cache/huggingface/hub/models--google--gemma-3-1b-it/snapshots/dcc83ea841ab6100d6b47a070329e1ba4cf78752"
+PATH_WEIGHTS_ADAPTER = "/Users/justinpyron/code/podcaster-gpt/weights_sft/rogan-llm-cleaned-words5_20260407T215417Z"
 
 # --- App Setup ---
 st.set_page_config(page_title="Podcaster GPT", page_icon="🎙️", layout="centered")
@@ -61,7 +63,7 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 # Accept user input
-if prompt := st.chat_input("What is up?"):
+if prompt := st.chat_input("What's up?"):
     # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
 

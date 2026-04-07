@@ -1,6 +1,6 @@
 # Processing Pipeline
 
-This folder contains the scripts for the 6-step data processing pipeline used to generate training data for the podcaster LLM.
+This folder contains the scripts for the 7-step data processing pipeline used to generate training data for the podcaster LLM.
 
 ## Pipeline Steps
 
@@ -35,6 +35,11 @@ This folder contains the scripts for the 6-step data processing pipeline used to
     *   **Input Folder:** `data/examples_sft/` (SFT examples)
     *   **Output Folder:** `data/examples_dpo/` (DPO examples JSON)
 
+7.  **`step6_train_val_split.py`**
+    Splits a directory of JSON files into training and validation sets. Files are randomly split at the file level, then all examples are unpacked into `train.json` and `val.json`.
+    *   **Input Folder:** `data/examples_sft/` or `data/examples_dpo/`
+    *   **Output Folder:** `data/train_val_splits_sft/` or `data/train_val_splits_dpo/`
+
 ## Data Directory Structure
 
 *   **`data/podcasts/`**: Full-length podcast MP3 files.
@@ -45,6 +50,8 @@ This folder contains the scripts for the 6-step data processing pipeline used to
 *   **`data/transcripts_clean/`**: LLM-cleaned transcripts with merged fragments and removed backchannel noise.
 *   **`data/examples_sft/`**: Training data formatted for Supervised Fine-Tuning.
 *   **`data/examples_dpo/`**: Training data formatted for Direct Preference Optimization.
+*   **`data/train_val_splits_sft/`**: Final train/val JSON files for SFT.
+*   **`data/train_val_splits_dpo/`**: Final train/val JSON files for DPO.
 
 ## Shared Utilities
 
@@ -87,4 +94,9 @@ uv run processing/step4_create_sft_examples.py \
 uv run processing/step5_create_dpo_examples.py \
     -i data/examples_sft/rogan \
     -o data/examples_dpo/rogan
+
+# 6. Split into train and val sets
+uv run processing/step6_train_val_split.py \
+    -i data/examples_dpo/rogan \
+    -o data/train_val_splits_dpo/rogan
 ```

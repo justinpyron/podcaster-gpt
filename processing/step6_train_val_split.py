@@ -1,9 +1,8 @@
 """
-Splits a directory of DPO JSON files into training and validation sets.
+Splits a directory of JSON files into training and validation sets.
 
-This script takes a folder of JSON files (each containing a list of DPOExample dicts),
-randomly splits the *files* 90/10, and then unpacks all examples into two large
-JSON files: train.json and val.json.
+Each JSON file must contain an array of examples (dicts). Files are randomly
+split at the file level, then all examples are unpacked into train.json and val.json.
 
 Usage:
     python processing/train_val_split.py \
@@ -20,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 
-def load_examples(files: list[Path]) -> list[dict[str, Any]]:
+def load_and_flatten_examples(files: list[Path]) -> list[dict[str, Any]]:
     """Reads a list of JSON files and unpacks their contents into a single list."""
     all_examples = []
     for f in files:
@@ -54,7 +53,7 @@ def split_files(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Split DPO JSON files into train and val sets."
+        description="Split JSON files into train and val sets."
     )
     parser.add_argument(
         "-i",
@@ -102,8 +101,8 @@ def main():
     print(f"Split: {len(train_files)} train files, {len(val_files)} val files.")
 
     # Load and unpack
-    train_examples = load_examples(train_files)
-    val_examples = load_examples(val_files)
+    train_examples = load_and_flatten_examples(train_files)
+    val_examples = load_and_flatten_examples(val_files)
     print(f"Total examples: {len(train_examples)} train, {len(val_examples)} val.")
 
     # Save
