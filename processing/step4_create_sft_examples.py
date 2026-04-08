@@ -16,6 +16,8 @@ from pathlib import Path
 import numpy as np
 from data_types import Message, SFTExample
 
+MAX_CHARS_PER_TRANSCRIPT = 6_000
+
 
 def filter_files(messages: list[Message]) -> bool:
     """
@@ -71,6 +73,38 @@ def filter_messages(
     return example
 
 
+def truncate_messages(example: SFTExample) -> SFTExample:
+    """
+    Truncate the prompt messages in an SFTExample to fit within MAX_CHARS_PER_TRANSCRIPT.
+    Iterates backwards from the last message in the prompt and includes as many
+    as possible without exceeding the limit.
+
+    Args:
+        example: The SFTExample to truncate.
+
+    Returns:
+        A new SFTExample with truncated prompt messages.
+    """
+    truncated_prompt = []
+    current_chars = 0
+
+    # Completion always counts towards the limit
+    completion_len = len(example.completion[0].content)
+    current_chars += completion_len
+
+    for message in reversed(example.prompt):
+        message_len = len(message.content)
+        if current_chars + message_len > MAX_CHARS_PER_TRANSCRIPT:
+            break
+        truncated_prompt.append(message)
+        current_chars += message_len
+
+    # Reverse back to maintain original chronological order
+    return SFTExample(
+        prompt=list(reversed(truncated_prompt)), completion=example.completion
+    )
+
+
 def create_finetune_examples(
     messages: list[Message],
     min_words_completion: int = 5,
@@ -107,6 +141,9 @@ def create_finetune_examples(
         for i, m in enumerate(messages)
         if m.role == "assistant" and i > 0
     ]
+
+    # Truncate messages to fit context window
+    examples = [truncate_messages(ex) for ex in examples]
 
     # Filter the examples
     filtered_examples = [

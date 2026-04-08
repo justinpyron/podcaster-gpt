@@ -11,7 +11,11 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStream
 
 # Version 1B
 PATH_WEIGHTS_BASE = "/Users/justinpyron/.cache/huggingface/hub/models--google--gemma-3-1b-it/snapshots/dcc83ea841ab6100d6b47a070329e1ba4cf78752"
-PATH_WEIGHTS_ADAPTER = "/Users/justinpyron/code/podcaster-gpt/weights_sft/rogan-llm-cleaned-words5_20260407T215417Z"
+# PATH_WEIGHTS_ADAPTER = "/Users/justinpyron/code/podcaster-gpt/weights_sft/rogan-llm-cleaned-words5_20260407T215417Z"
+PATH_WEIGHTS_ADAPTER = (
+    "/Users/justinpyron/code/podcaster-gpt/weights_sft/dwarkesh-v0_20260408T164021Z"
+)
+
 
 # --- App Setup ---
 st.set_page_config(page_title="Podcaster GPT", page_icon="🎙️", layout="centered")
