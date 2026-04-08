@@ -87,18 +87,29 @@ def transform_to_processed_transcript(
     """
     Transform the raw scraped transcript into the ProcessedTranscript format.
     Dwarkesh Patel is mapped to 'assistant', and everyone else to 'user'.
+    Ensures that the messages alternate between 'user' and 'assistant'.
 
     Args:
         raw_transcript: List of dicts with 'speaker' and 'content'.
         podcaster_name: The name of the podcaster to map to 'assistant'.
 
     Returns:
-        ProcessedTranscript (list of Message).
+        ProcessedTranscript (list of Message). Returns an empty list if roles do not alternate.
     """
     processed = []
     for turn in raw_transcript:
         role = "assistant" if turn["speaker"] == podcaster_name else "user"
         processed.append(Message(role=role, content=turn["content"]))
+
+    # Data quality check: ensure roles alternate
+    for i in range(len(processed) - 1):
+        if processed[i].role == processed[i + 1].role:
+            print(
+                f"  ⚠️ Non-alternating roles found at turn {i}: "
+                f"{processed[i].role} followed by {processed[i+1].role}"
+            )
+            return []
+
     return processed
 
 
@@ -132,6 +143,11 @@ def process_urls(urls: list[str], output_dir: Path) -> None:
                 continue
 
             processed_transcript = transform_to_processed_transcript(raw_transcript)
+
+            if not processed_transcript:
+                print(f"  ⚠️ Processed transcript is empty for {url}")
+                failed += 1
+                continue
 
             with open(output_path, "w", encoding="utf-8") as f:
                 json.dump(
