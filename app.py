@@ -21,7 +21,6 @@ Source code: [GitHub](https://github.com/justinpyron/podcaster-gpt)
 def stream_api(
     adapter_name: str,
     messages: list[dict],
-    temperature: float = 1.0,
 ):
     """Stream generated text from the backend as token chunks."""
     if not BACKEND_URL:
@@ -32,7 +31,7 @@ def stream_api(
         f"{BACKEND_URL}/generate/{adapter_name}",
         json={
             "messages": messages,
-            "temperature": temperature,
+            "temperature": 1.0,
             "num_tokens": 256,
         },
         timeout=300.0,
@@ -69,15 +68,11 @@ backend_status()
 with st.expander("What is this app?"):
     st.markdown(WHAT_IS_THIS_APP)
 
-col1, col2 = st.columns([2, 1])
-with col1:
-    selected_podcaster = st.segmented_control(
-        "Podcaster",
-        options=PODCASTERS,
-        default="Base",
-    )
-with col2:
-    temperature = st.slider("Temperature", 0.1, 2.0, 1.0, 0.1)
+selected_podcaster = st.segmented_control(
+    "Podcaster",
+    options=PODCASTERS,
+    default="Base",
+)
 
 if "active_podcaster" not in st.session_state:
     st.session_state.active_podcaster = selected_podcaster
@@ -86,7 +81,7 @@ if selected_podcaster != st.session_state.active_podcaster:
     st.session_state.messages = []
     st.rerun()
 
-if st.button("Clear Chat"):
+if st.button("Clear Chat", use_container_width=True):
     st.session_state.messages = []
     st.rerun()
 
@@ -107,7 +102,6 @@ if prompt := st.chat_input("What's up?"):
             stream_api(
                 adapter_name=selected_podcaster.lower(),
                 messages=st.session_state.messages,
-                temperature=temperature,
             )
         )
 
