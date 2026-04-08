@@ -94,7 +94,7 @@ def transform_to_processed_transcript(
         podcaster_name: The name of the podcaster to map to 'assistant'.
 
     Returns:
-        ProcessedTranscript (list of Message).
+        ProcessedTranscript (list of Message). Returns an empty list if roles do not alternate.
     """
     if not raw_transcript:
         return []
