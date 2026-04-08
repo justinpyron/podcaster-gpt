@@ -64,10 +64,10 @@ if "warmup_future" not in st.session_state:
     st.session_state.backend_ready = False
 
 st.title("🎙️ Podcaster GPT")
+backend_status()
+
 with st.expander("What is this app?"):
     st.markdown(WHAT_IS_THIS_APP)
-
-backend_status()
 
 col1, col2 = st.columns([2, 1])
 with col1:
