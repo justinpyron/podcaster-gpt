@@ -72,6 +72,7 @@ selected_podcaster = st.segmented_control(
     "Podcaster",
     options=PODCASTERS,
     default="Base",
+    width="stretch",
 )
 
 if "active_podcaster" not in st.session_state:
