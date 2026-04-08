@@ -69,7 +69,7 @@ if "warmup_future" not in st.session_state:
     st.session_state.warmup_future = executor.submit(_ping_backend)
     st.session_state.backend_ready = False
 
-st.title("🎙️ Podcaster GPT")
+st.title("Podcaster GPT 🎙️")
 backend_status()
 
 with st.expander("What is this app?"):
