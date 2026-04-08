@@ -1,121 +1,117 @@
-from threading import Thread
+import os
+from concurrent.futures import ThreadPoolExecutor
 
+import httpx
 import streamlit as st
-from peft import PeftModel
-from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
 
-# --- Configuration & Paths ---
-# Version 270m
-# PATH_WEIGHTS_BASE = "/Users/justinpyron/.cache/huggingface/hub/models--google--gemma-3-270m-it/snapshots/ac82b4e820549b854eebf28ce6dedaf9fdfa17b3"
-# PATH_WEIGHTS_ADAPTER = "/Users/justinpyron/code/podcaster-gpt/weights_sft/rogan-llm-cleaned-words5_20260407T204518Z"
+BACKEND_URL = os.getenv("BACKEND_URL")
+NUM_TOKENS = 256
+TEMPERATURE = 1.0
+TIMEOUT_SECONDS = 300.0
+# Keys in the dict below must match the adapter endpoint names in the backend.
+PODCASTERS = {
+    "base": "Base",
+    "rogan": "Joe Rogan",
+    "dwarkesh": "Dwarkesh Patel",
+}
+WHAT_IS_THIS_APP = """\
+Chat with an AI that talks like famous podcasters.
 
-# Version 1B
-PATH_WEIGHTS_BASE = "/Users/justinpyron/.cache/huggingface/hub/models--google--gemma-3-1b-it/snapshots/dcc83ea841ab6100d6b47a070329e1ba4cf78752"
-# PATH_WEIGHTS_ADAPTER = "/Users/justinpyron/code/podcaster-gpt/weights_sft/rogan-llm-cleaned-words5_20260407T215417Z"
-PATH_WEIGHTS_ADAPTER = (
-    "/Users/justinpyron/code/podcaster-gpt/weights_sft/dwarkesh-v0_20260408T164021Z"
-)
+This app uses LoRA adapters fine-tuned on podcast transcripts to capture each
+host's distinctive conversational style. Select "Base" to chat with the
+original model ([Gemma-3-1B-IT](https://huggingface.co/google/gemma-3-1b-it))
+without any style tuning.
+
+Source code 👉 [GitHub](https://github.com/justinpyron/podcaster-gpt)
+"""
 
 
-# --- App Setup ---
+def stream_api(
+    adapter_name: str,
+    messages: list[dict],
+):
+    """Stream generated text from the backend as token chunks."""
+    if not BACKEND_URL:
+        raise ValueError("BACKEND_URL environment variable is not set")
+
+    with httpx.stream(
+        "POST",
+        f"{BACKEND_URL}/generate/{adapter_name}",
+        json={
+            "messages": messages,
+            "temperature": TEMPERATURE,
+            "num_tokens": NUM_TOKENS,
+        },
+        timeout=TIMEOUT_SECONDS,
+    ) as response:
+        response.raise_for_status()
+        for chunk in response.iter_text():
+            yield chunk
+
+
+def _ping_backend():
+    httpx.get(f"{BACKEND_URL}/health", timeout=300)
+
+
+@st.fragment(run_every=2)
+def backend_status():
+    if st.session_state.get("backend_ready"):
+        return
+    st.info("Waking up the server. This may take a few seconds...", icon="⏳")
+    if st.session_state.warmup_future.done():
+        st.session_state.backend_ready = True
+
+
 st.set_page_config(page_title="Podcaster GPT", page_icon="🎙️", layout="centered")
 
-st.title("🎙️ Podcaster GPT")
-st.markdown("Fine-tuned Gemma-3 for simulating podcasters.")
+if "warmup_future" not in st.session_state:
+    executor = ThreadPoolExecutor(max_workers=1)
+    st.session_state.warmup_future = executor.submit(_ping_backend)
+    st.session_state.backend_ready = False
 
-# --- Model Loading (Cached) ---
-@st.cache_resource
-def load_model_and_tokenizer():
+st.title("Podcaster GPT 🎙️")
+backend_status()
 
-    # Load tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(PATH_WEIGHTS_BASE)
+with st.expander("What is this app?"):
+    st.markdown(WHAT_IS_THIS_APP)
 
-    # Load base model
-    base_model = AutoModelForCausalLM.from_pretrained(PATH_WEIGHTS_BASE)
-    base_model.eval()
+selected_podcaster = st.segmented_control(
+    "Podcaster",
+    options=list(PODCASTERS.keys()),
+    default=list(PODCASTERS.keys())[0],
+    format_func=lambda x: PODCASTERS[x],
+    width="stretch",
+)
 
-    # Load first adapter
-    model = PeftModel.from_pretrained(
-        base_model,
-        PATH_WEIGHTS_ADAPTER,
-        adapter_name="rogan-medium-words6",
-    )
-    model.eval()
-
-    return model, tokenizer
-
-
-model, tokenizer = load_model_and_tokenizer()
-
-# --- Controls ---
-# Keep it simple: just a temperature slider in the main view
-temperature = st.slider("Temperature", 0.1, 2.0, 1.0, 0.1)
-
-if st.button("Clear Chat"):
+if "active_podcaster" not in st.session_state:
+    st.session_state.active_podcaster = selected_podcaster
+if selected_podcaster != st.session_state.active_podcaster:
+    st.session_state.active_podcaster = selected_podcaster
     st.session_state.messages = []
     st.rerun()
 
-# --- Chat Interface ---
+if st.button("Clear Chat", use_container_width=True):
+    st.session_state.messages = []
+    st.rerun()
 
-# Initialize chat history
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display chat messages from history on app rerun
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Accept user input
 if prompt := st.chat_input("What's up?"):
-    # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
-
-    # Display user message in chat message container
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Prepare for assistant response
     with st.chat_message("assistant"):
-        # Format messages for the chat template
-        chat_history = st.session_state.messages
-
-        # Tokenize with chat template
-        inputs = tokenizer.apply_chat_template(
-            chat_history,
-            tokenize=True,
-            return_tensors="pt",
-            add_generation_prompt=True,
-            return_dict=True,
+        full_response = st.write_stream(
+            stream_api(
+                adapter_name=selected_podcaster.lower(),
+                messages=st.session_state.messages,
+            )
         )
 
-        # Set up streamer
-        streamer = TextIteratorStreamer(
-            tokenizer, skip_prompt=True, skip_special_tokens=True
-        )
-
-        # Generation arguments
-        generation_kwargs = dict(
-            **inputs,
-            streamer=streamer,
-            max_new_tokens=256,
-            do_sample=True,
-            temperature=temperature,
-            # top_p=0.9,  # Stabilize generation by filtering low-prob tokens
-            # top_k=50,   # Stabilize generation by filtering the tail
-            pad_token_id=tokenizer.pad_token_id,
-        )
-
-        # Run generation in a separate thread to allow streaming
-        thread = Thread(target=model.generate, kwargs=generation_kwargs)
-        thread.start()
-
-        # Display response using stream
-        def response_generator():
-            for new_text in streamer:
-                yield new_text
-
-        full_response = st.write_stream(response_generator())
-
-    # Add assistant response to chat history
     st.session_state.messages.append({"role": "assistant", "content": full_response})
