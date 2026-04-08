@@ -54,11 +54,14 @@ class Server:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         model_path = f"{VOLUME_MOUNT_PATH}/{MODEL_FOLDER_PATH}"
 
+        # Load tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
 
+        # Load base model
         base_model = AutoModelForCausalLM.from_pretrained(model_path).to(self.device)
         base_model.eval()
 
+        # Load first adapter
         adapter_names = sorted(ADAPTERS.keys())
         first = adapter_names[0]
         self.model = PeftModel.from_pretrained(
@@ -66,6 +69,8 @@ class Server:
             f"{VOLUME_MOUNT_PATH}/{ADAPTERS[first]}",
             adapter_name=first,
         )
+
+        # Load remaining adapters
         for name in adapter_names[1:]:
             self.model.load_adapter(
                 f"{VOLUME_MOUNT_PATH}/{ADAPTERS[name]}", adapter_name=name
@@ -85,6 +90,7 @@ class Server:
 
         from transformers import TextIteratorStreamer
 
+        # Tokenize input
         inputs = self.tokenizer.apply_chat_template(
             messages,
             tokenize=True,
@@ -94,10 +100,10 @@ class Server:
         )
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
+        # Set up streamer
         streamer = TextIteratorStreamer(
             self.tokenizer, skip_prompt=True, skip_special_tokens=True
         )
-
         generation_kwargs = dict(
             **inputs,
             streamer=streamer,
@@ -107,6 +113,7 @@ class Server:
             pad_token_id=self.tokenizer.pad_token_id,
         )
 
+        # Run generation in background thread (model.generate blocks the main thread)
         def _run():
             if adapter_name == "base":
                 with self.model.disable_adapter():
@@ -118,6 +125,7 @@ class Server:
         thread = threading.Thread(target=_run)
         thread.start()
 
+        # Yield token chunks as they arrive
         for chunk in streamer:
             yield chunk
 
