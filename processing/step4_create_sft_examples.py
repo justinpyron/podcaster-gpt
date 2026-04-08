@@ -16,7 +16,7 @@ from pathlib import Path
 import numpy as np
 from data_types import Message, SFTExample
 
-MAX_CHARS_PER_TRANSCRIPT = 100_000
+MAX_CHARS_PER_TRANSCRIPT = 6_000
 
 
 def filter_files(messages: list[Message]) -> bool:
