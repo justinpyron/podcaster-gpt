@@ -6,14 +6,14 @@ import modal
 # Configuration
 # =============================================================================
 
-VOLUME_NAME = "PLACEHOLDER"
+VOLUME_NAME = "podcaster-gpt"
 VOLUME_MOUNT_PATH = "/data"
-MODEL_FOLDER_PATH = "PLACEHOLDER"
+MODEL_FOLDER_PATH = "gemma-3-1b-it"
 ADAPTERS = {
-    "rogan": "PLACEHOLDER",
-    "dwarkesh": "PLACEHOLDER",
+    "rogan": "weights_sft/rogan-llm-cleaned-words5_20260407T215417Z",
+    "dwarkesh": "weights_sft/dwarkesh-v0_20260408T164021Z",
 }
-SCALEDOWN_WINDOW_SECONDS = 600
+SCALEDOWN_WINDOW_SECONDS = 200
 
 # =============================================================================
 # Modal Setup
