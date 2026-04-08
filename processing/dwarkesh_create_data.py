@@ -16,8 +16,6 @@ import httpx
 from bs4 import BeautifulSoup
 from data_types import Message, ProcessedTranscript
 
-MAX_CHARS_PER_TRANSCRIPT = 100_000
-
 
 def extract_html(url: str) -> BeautifulSoup | None:
     """
@@ -90,7 +88,6 @@ def transform_to_processed_transcript(
     Transform the raw scraped transcript into the ProcessedTranscript format.
     Dwarkesh Patel is mapped to 'assistant', and everyone else to 'user'.
     Consecutive messages from the same role are merged with two newlines.
-    Only keeps the last N messages that fit within MAX_CHARS_PER_TRANSCRIPT.
 
     Args:
         raw_transcript: List of dicts with 'speaker' and 'content'.
@@ -112,18 +109,7 @@ def transform_to_processed_transcript(
         else:
             processed.append(Message(role=role, content=content))
 
-    # Filtering logic: keep only the last N messages within character limit
-    filtered = []
-    current_chars = 0
-    for message in reversed(processed):
-        message_len = len(message.content)
-        if current_chars + message_len > MAX_CHARS_PER_TRANSCRIPT:
-            break
-        filtered.append(message)
-        current_chars += message_len
-
-    # Reverse back to maintain original chronological order
-    return list(reversed(filtered))
+    return processed
 
 
 def process_urls(urls: list[str], output_dir: Path) -> None:
