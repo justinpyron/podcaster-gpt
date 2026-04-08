@@ -5,6 +5,17 @@ import httpx
 import streamlit as st
 
 BACKEND_URL = os.getenv("BACKEND_URL")
+PODCASTERS = ["Base", "Rogan", "Dwarkesh"]
+WHAT_IS_THIS_APP = """\
+Chat with an AI that talks like your favorite podcasters.
+
+This app uses LoRA adapters fine-tuned on podcast transcripts to capture each
+host's distinctive conversational style. Select "Base" to chat with the
+original model ([Gemma-3-1B-IT](https://huggingface.co/google/gemma-3-1b-it))
+without any style tuning.
+
+Source code: [GitHub](https://github.com/justinpyron/podcaster-gpt)
+"""
 
 
 def stream_api(
@@ -53,10 +64,27 @@ if "warmup_future" not in st.session_state:
     st.session_state.backend_ready = False
 
 st.title("🎙️ Podcaster GPT")
+with st.expander("What is this app?"):
+    st.markdown(WHAT_IS_THIS_APP)
 
 backend_status()
 
-temperature = st.slider("Temperature", 0.1, 2.0, 1.0, 0.1)
+col1, col2 = st.columns([2, 1])
+with col1:
+    selected_podcaster = st.segmented_control(
+        "Podcaster",
+        options=PODCASTERS,
+        default="Base",
+    )
+with col2:
+    temperature = st.slider("Temperature", 0.1, 2.0, 1.0, 0.1)
+
+if "active_podcaster" not in st.session_state:
+    st.session_state.active_podcaster = selected_podcaster
+if selected_podcaster != st.session_state.active_podcaster:
+    st.session_state.active_podcaster = selected_podcaster
+    st.session_state.messages = []
+    st.rerun()
 
 if st.button("Clear Chat"):
     st.session_state.messages = []
@@ -77,7 +105,7 @@ if prompt := st.chat_input("What's up?"):
     with st.chat_message("assistant"):
         full_response = st.write_stream(
             stream_api(
-                adapter_name="base",
+                adapter_name=selected_podcaster.lower(),
                 messages=st.session_state.messages,
                 temperature=temperature,
             )
