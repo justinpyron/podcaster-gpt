@@ -15,7 +15,7 @@ PODCASTERS = {
     "dwarkesh": "Dwarkesh Patel",
 }
 WHAT_IS_THIS_APP = """\
-Chat with an AI that talks like your favorite podcasters.
+Chat with an AI that talks like famous podcasters.
 
 This app uses LoRA adapters fine-tuned on podcast transcripts to capture each
 host's distinctive conversational style. Select "Base" to chat with the
