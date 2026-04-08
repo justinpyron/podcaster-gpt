@@ -87,6 +87,7 @@ def transform_to_processed_transcript(
     """
     Transform the raw scraped transcript into the ProcessedTranscript format.
     Dwarkesh Patel is mapped to 'assistant', and everyone else to 'user'.
+    Consecutive messages from the same role are merged with two newlines.
 
     Args:
         raw_transcript: List of dicts with 'speaker' and 'content'.
@@ -95,10 +96,19 @@ def transform_to_processed_transcript(
     Returns:
         ProcessedTranscript (list of Message).
     """
+    if not raw_transcript:
+        return []
+
     processed = []
     for turn in raw_transcript:
         role = "assistant" if turn["speaker"] == podcaster_name else "user"
-        processed.append(Message(role=role, content=turn["content"]))
+        content = turn["content"]
+
+        if processed and processed[-1].role == role:
+            processed[-1].content += "\n\n" + content
+        else:
+            processed.append(Message(role=role, content=content))
+
     return processed
 
 
@@ -132,6 +142,11 @@ def process_urls(urls: list[str], output_dir: Path) -> None:
                 continue
 
             processed_transcript = transform_to_processed_transcript(raw_transcript)
+
+            if not processed_transcript:
+                print(f"  ⚠️ Processed transcript is empty for {url}")
+                failed += 1
+                continue
 
             with open(output_path, "w", encoding="utf-8") as f:
                 json.dump(
