@@ -60,7 +60,6 @@ def backend_status():
     st.info("Waking up the server. This may take a few seconds...", icon="⏳")
     if st.session_state.warmup_future.done():
         st.session_state.backend_ready = True
-        st.rerun(scope="fragment")
 
 
 st.set_page_config(page_title="Podcaster GPT", page_icon="🎙️", layout="centered")
