@@ -5,7 +5,11 @@ import httpx
 import streamlit as st
 
 BACKEND_URL = os.getenv("BACKEND_URL")
-PODCASTERS = ["Base", "Rogan", "Dwarkesh"]
+PODCASTERS = {
+    "base": "Base",
+    "rogan": "Joe Rogan",
+    "dwarkesh": "Dwarkesh Patel",
+}
 WHAT_IS_THIS_APP = """\
 Chat with an AI that talks like your favorite podcasters.
 
@@ -70,8 +74,9 @@ with st.expander("What is this app?"):
 
 selected_podcaster = st.segmented_control(
     "Podcaster",
-    options=PODCASTERS,
-    default="Base",
+    options=list(PODCASTERS.keys()),
+    default=list(PODCASTERS.keys())[0],
+    format_func=lambda x: PODCASTERS[x],
     width="stretch",
 )
 
