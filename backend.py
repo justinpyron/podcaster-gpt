@@ -13,6 +13,7 @@ ADAPTERS = {
     "rogan": "weights_sft/rogan-llm-cleaned-words5_20260407T215417Z",
     "dwarkesh": "weights_sft/dwarkesh-v0_20260408T164021Z",
 }
+GPU = "T4"
 SCALEDOWN_WINDOW_SECONDS = 200
 
 # =============================================================================
@@ -22,6 +23,7 @@ SCALEDOWN_WINDOW_SECONDS = 200
 app = modal.App("podcaster-gpt")
 
 image = modal.Image.debian_slim(python_version="3.12").pip_install(
+    "torch",
     "transformers",
     "peft",
     "fastapi",
@@ -39,19 +41,22 @@ volume = modal.Volume.from_name(VOLUME_NAME)
 @app.cls(
     image=image,
     volumes={VOLUME_MOUNT_PATH: volume},
+    gpu=GPU,
     scaledown_window=SCALEDOWN_WINDOW_SECONDS,
 )
 class Server:
     @modal.enter()
     def load_model_and_tokenizer(self):
+        import torch
         from peft import PeftModel
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         model_path = f"{VOLUME_MOUNT_PATH}/{MODEL_FOLDER_PATH}"
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
 
-        base_model = AutoModelForCausalLM.from_pretrained(model_path)
+        base_model = AutoModelForCausalLM.from_pretrained(model_path).to(self.device)
         base_model.eval()
 
         adapter_names = sorted(ADAPTERS.keys())
@@ -87,6 +92,7 @@ class Server:
             add_generation_prompt=True,
             return_dict=True,
         )
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
         streamer = TextIteratorStreamer(
             self.tokenizer, skip_prompt=True, skip_special_tokens=True
