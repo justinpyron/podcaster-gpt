@@ -5,6 +5,10 @@ import httpx
 import streamlit as st
 
 BACKEND_URL = os.getenv("BACKEND_URL")
+NUM_TOKENS = 256
+TEMPERATURE = 1.0
+TIMEOUT_SECONDS = 300.0
+# Keys in the dict below must match the adapter endpoint names in the backend.
 PODCASTERS = {
     "base": "Base",
     "rogan": "Joe Rogan",
@@ -18,7 +22,7 @@ host's distinctive conversational style. Select "Base" to chat with the
 original model ([Gemma-3-1B-IT](https://huggingface.co/google/gemma-3-1b-it))
 without any style tuning.
 
-Source code: [GitHub](https://github.com/justinpyron/podcaster-gpt)
+Source code 👉 [GitHub](https://github.com/justinpyron/podcaster-gpt)
 """
 
 
@@ -35,10 +39,10 @@ def stream_api(
         f"{BACKEND_URL}/generate/{adapter_name}",
         json={
             "messages": messages,
-            "temperature": 1.0,
-            "num_tokens": 256,
+            "temperature": TEMPERATURE,
+            "num_tokens": NUM_TOKENS,
         },
-        timeout=300.0,
+        timeout=TIMEOUT_SECONDS,
     ) as response:
         response.raise_for_status()
         for chunk in response.iter_text():
@@ -46,7 +50,7 @@ def stream_api(
 
 
 def _ping_backend():
-    httpx.get(f"{BACKEND_URL}/health", timeout=120)
+    httpx.get(f"{BACKEND_URL}/health", timeout=300)
 
 
 @st.fragment(run_every=2)
