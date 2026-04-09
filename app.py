@@ -14,6 +14,11 @@ PODCASTERS = {
     "rogan": "Joe Rogan",
     "dwarkesh": "Dwarkesh Patel",
 }
+SYSTEM_PROMPTS = {
+    "base": "You are a helpful assistant.",
+    "rogan": "Your name is Joe. You are having a conversation with a friend.",
+    "dwarkesh": "Your name is Dwarkesh. You are having a conversation with a friend.",
+}
 WHAT_IS_THIS_APP = """\
 Chat with an AI that talks like famous podcasters.
 
@@ -62,6 +67,15 @@ def backend_status():
         st.session_state.backend_ready = True
 
 
+def reset_chat(podcaster_key: str):
+    """Reset the chat history with the appropriate system prompt."""
+    system_content = SYSTEM_PROMPTS.get(podcaster_key)
+    if system_content:
+        st.session_state.messages = [{"role": "system", "content": system_content}]
+    else:
+        st.session_state.messages = []
+
+
 st.set_page_config(page_title="Podcaster GPT", page_icon="🎙️", layout="centered")
 
 if "warmup_future" not in st.session_state:
@@ -85,19 +99,23 @@ selected_podcaster = st.segmented_control(
 
 if "active_podcaster" not in st.session_state:
     st.session_state.active_podcaster = selected_podcaster
+    reset_chat(selected_podcaster)
+
 if selected_podcaster != st.session_state.active_podcaster:
     st.session_state.active_podcaster = selected_podcaster
-    st.session_state.messages = []
+    reset_chat(selected_podcaster)
     st.rerun()
 
 if st.button("Clear Chat", use_container_width=True):
-    st.session_state.messages = []
+    reset_chat(selected_podcaster)
     st.rerun()
 
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+    reset_chat(selected_podcaster)
 
 for message in st.session_state.messages:
+    if message["role"] == "system":
+        continue
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
