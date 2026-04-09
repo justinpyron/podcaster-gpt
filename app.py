@@ -5,7 +5,7 @@ import httpx
 import streamlit as st
 
 BACKEND_URL = os.getenv("BACKEND_URL")
-NUM_TOKENS = 256
+NUM_TOKENS = 512
 TEMPERATURE = 1.0
 TIMEOUT_SECONDS = 300.0
 # Keys in the dict below must match the adapter endpoint names in the backend.
