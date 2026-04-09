@@ -82,7 +82,7 @@ def extract_transcript(url: str) -> list[dict[str, str]]:
 
 def transform_to_processed_transcript(
     raw_transcript: list[dict[str, str]],
-    podcaster_name: str = "Dwarkesh Patel",
+    podcaster_name: str = "Dwarkesh",
 ) -> ProcessedTranscript:
     """
     Transform the raw scraped transcript into the ProcessedTranscript format.
@@ -101,7 +101,9 @@ def transform_to_processed_transcript(
 
     processed = []
     for turn in raw_transcript:
-        role = "assistant" if turn["speaker"] == podcaster_name else "user"
+        role = (
+            "assistant" if podcaster_name.lower() in turn["speaker"].lower() else "user"
+        )
         content = turn["content"]
 
         if processed and processed[-1].role == role:
