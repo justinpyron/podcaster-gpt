@@ -104,8 +104,17 @@ def truncate_messages(example: SFTExample) -> SFTExample | None:
         return None
 
     # Reverse back to maintain original chronological order
+    ordered_prompt = list(reversed(truncated_prompt))
+
+    # Ensure the prompt starts with a user message
+    first_user_idx = next(
+        (i for i, m in enumerate(ordered_prompt) if m.role == "user"), None
+    )
+    if first_user_idx is None:
+        return None
+
     return SFTExample(
-        prompt=list(reversed(truncated_prompt)), completion=example.completion
+        prompt=ordered_prompt[first_user_idx:], completion=example.completion
     )
 
 
