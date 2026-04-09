@@ -73,7 +73,7 @@ def filter_messages(
     return example
 
 
-def truncate_messages(example: SFTExample) -> SFTExample:
+def truncate_messages(example: SFTExample) -> SFTExample | None:
     """
     Truncate the prompt messages in an SFTExample to fit within MAX_CHARS_PER_TRANSCRIPT.
     Iterates backwards from the last message in the prompt and includes as many
@@ -83,7 +83,8 @@ def truncate_messages(example: SFTExample) -> SFTExample:
         example: The SFTExample to truncate.
 
     Returns:
-        A new SFTExample with truncated prompt messages.
+        A new SFTExample with truncated prompt messages, or None if the last
+        message in the prompt itself exceeds the limit.
     """
     truncated_prompt = []
     current_chars = 0
@@ -99,9 +100,21 @@ def truncate_messages(example: SFTExample) -> SFTExample:
         truncated_prompt.append(message)
         current_chars += message_len
 
+    if not truncated_prompt:
+        return None
+
     # Reverse back to maintain original chronological order
+    ordered_prompt = list(reversed(truncated_prompt))
+
+    # Ensure the prompt starts with a user message
+    first_user_idx = next(
+        (i for i, m in enumerate(ordered_prompt) if m.role == "user"), None
+    )
+    if first_user_idx is None:
+        return None
+
     return SFTExample(
-        prompt=list(reversed(truncated_prompt)), completion=example.completion
+        prompt=ordered_prompt[first_user_idx:], completion=example.completion
     )
 
 
@@ -143,12 +156,16 @@ def create_finetune_examples(
     ]
 
     # Truncate messages to fit context window
-    examples = [truncate_messages(ex) for ex in examples]
+    truncated_examples = []
+    for ex in examples:
+        truncated = truncate_messages(ex)
+        if truncated:
+            truncated_examples.append(truncated)
 
     # Filter the examples
     filtered_examples = [
         ex
-        for ex in examples
+        for ex in truncated_examples
         if filter_messages(ex, min_words_completion, min_words_prompt) is not None
     ]
 

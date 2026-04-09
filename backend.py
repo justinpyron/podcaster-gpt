@@ -10,8 +10,8 @@ VOLUME_NAME = "podcaster-gpt"
 VOLUME_MOUNT_PATH = "/data"
 MODEL_FOLDER_PATH = "gemma-3-1b-it"
 ADAPTERS = {
-    "rogan": "weights_sft/rogan-llm-cleaned-words5_20260407T215417Z",
-    "dwarkesh": "weights_sft/dwarkesh-v0_20260408T164021Z",
+    "rogan": "weights_sft/rogan-1b_20260409T160818Z",
+    "dwarkesh": "weights_sft/dwarkesh-1b_20260409T180216Z",
 }
 GPU = "T4"
 SCALEDOWN_WINDOW_SECONDS = 200
