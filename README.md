@@ -1,6 +1,6 @@
 # Podcaster GPT
 
-Chat model fine-tuned to mimic famous podcasters
+Chat model fine-tuned to mimic famous podcasters.
 
 ## Overview
 
@@ -36,7 +36,13 @@ This project fine-tunes LoRA adapters on a base language model ([Gemma-3-1B-IT](
 
 ## Setup
 
-Install dependencies with [uv](https://docs.astral.sh/uv):
+1. Install [uv](https://github.com/astral-sh/uv):
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+2. Install dependencies:
 
 ```bash
 uv sync
@@ -92,7 +98,7 @@ modal run train_dpo.py \
   --name rogan-1b-dpo
 ```
 
-All data/model paths are relative to the Modal volume root. Training logs are sent to Weights & Biases.
+Base model weights and datasets must be uploaded to the `podcaster-gpt` Modal volume before training. All `--model-path` and `--data-path-*` arguments are relative to the volume root. Training logs are sent to Weights & Biases.
 
 ## Deployment
 
